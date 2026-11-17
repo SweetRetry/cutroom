@@ -1,7 +1,15 @@
 import { Button } from "@workspace/ui/components/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu"
+import { Slider } from "@workspace/ui/components/slider"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { cn } from "@workspace/ui/lib/utils"
-import { Pause, Play, SquareDashed, X } from "lucide-react"
+import { Pause, Play, SquareDashed, Volume2, VolumeX, X } from "lucide-react"
 
 import { PATHS } from "@workspace/core/project/layout"
 import { useViewNavigation, type Session } from "@/lib/review/session"
@@ -49,6 +57,8 @@ export function Stage({ session, className }: { session: Session; className?: st
   )
 }
 
+const RATES = [0.25, 0.5, 1, 1.5, 2]
+
 function Transport({ session }: { session: Session }) {
   const time = useReviewUi((s) => s.time)
   const playing = useReviewUi((s) => s.playing)
@@ -56,6 +66,7 @@ function Transport({ session }: { session: Session }) {
   const toggle = useReviewUi((s) => s.toggle)
   const setDrawing = useReviewUi((s) => s.setDrawing)
   const duration = session.timeline?.duration ?? 0
+  const fps = session.timeline?.fps ?? 30
 
   return (
     <div className="flex min-h-12 flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-2 lg:pb-0">
@@ -80,7 +91,22 @@ function Transport({ session }: { session: Session }) {
           <span className="text-subtle-foreground"> / {formatTime(duration)}</span>
         </span>
       </div>
-      <div className="ml-auto flex items-center gap-4">
+      <Slider
+        className="min-w-32 flex-1"
+        aria-label="播放进度"
+        min={0}
+        max={Math.max(duration, 1 / fps)}
+        step={1 / fps}
+        value={Math.min(time, duration)}
+        onValueChange={(value) => {
+          const ui = useReviewUi.getState()
+          ui.video?.pause()
+          ui.seek(Array.isArray(value) ? value[0]! : value)
+        }}
+      />
+      <div className="-mr-2 flex items-center gap-1">
+        <RateMenu />
+        <MuteButton />
         {session.editable && (
           <Tooltip>
             <TooltipTrigger
@@ -88,7 +114,7 @@ function Transport({ session }: { session: Session }) {
                 <Button
                   variant={drawing ? "secondary" : "ghost"}
                   size="sm"
-                  className="-mr-2.5"
+                  className="ml-3"
                   aria-pressed={drawing}
                   onClick={() => setDrawing(!drawing)}
                 >
@@ -102,5 +128,53 @@ function Transport({ session }: { session: Session }) {
         )}
       </div>
     </div>
+  )
+}
+
+function RateMenu() {
+  const rate = useReviewUi((s) => s.rate)
+  const setRate = useReviewUi((s) => s.setRate)
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="ghost" size="sm" aria-label={`播放速度 ${rate}×`}>
+            <span className="tabular-nums">{rate}×</span>
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="end" side="top" className="w-28">
+        <DropdownMenuRadioGroup value={rate} onValueChange={(v) => setRate(Number(v))}>
+          {RATES.map((r) => (
+            <DropdownMenuRadioItem key={r} value={r}>
+              <span className="tabular-nums">{r}×</span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function MuteButton() {
+  const muted = useReviewUi((s) => s.muted)
+  const setMuted = useReviewUi((s) => s.setMuted)
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={muted ? "取消静音" : "静音"}
+            aria-pressed={muted}
+            onClick={() => setMuted(!muted)}
+          >
+            {muted ? <VolumeX /> : <Volume2 />}
+          </Button>
+        }
+      />
+      <TooltipContent>{muted ? "取消静音" : "静音"}</TooltipContent>
+    </Tooltip>
   )
 }

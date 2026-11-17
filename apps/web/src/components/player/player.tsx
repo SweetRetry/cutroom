@@ -104,7 +104,8 @@ function useFollower(
   useEffect(() => {
     const video = ref.current
     if (!active || !video) return
-    const sync = ({ time, playing }: { time: number; playing: boolean }) => {
+    const sync = ({ time, playing, rate }: { time: number; playing: boolean; rate: number }) => {
+      if (video.playbackRate !== rate) video.playbackRate = rate
       if (playing && video.paused) void video.play()
       if (!playing && !video.paused) video.pause()
       // Let a playing follower run on its own clock; only correct real drift.

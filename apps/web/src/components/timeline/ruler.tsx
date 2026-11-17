@@ -1,7 +1,4 @@
 import { cn } from "@workspace/ui/lib/utils"
-import { useRef } from "react"
-
-import { useReviewUi } from "@/lib/review/ui-store"
 
 const STEPS = [0.5, 1, 2, 5, 10, 15, 30, 60, 120]
 const MIN_LABEL_PX = 64
@@ -13,8 +10,8 @@ function label(t: number) {
 }
 
 /**
- * Seconds along the top, and the scrub bar: press and drag here to move the playhead. Dragging
- * on the lanes below picks a span for a comment instead, so the two never fight.
+ * Seconds along the top. A press or drag here picks a point or a span like the lanes below; the
+ * progress bar under the player is where the playhead is scrubbed.
  */
 export function Ruler({
   duration,
@@ -28,33 +25,9 @@ export function Ruler({
   const step = STEPS.find((s) => s * zoom >= MIN_LABEL_PX) ?? STEPS.at(-1)!
   const ticks: number[] = []
   for (let t = 0; t <= duration + 1e-6; t += step) ticks.push(Number(t.toFixed(3)))
-  const scrubbing = useRef(false)
-
-  const seekTo = (event: React.PointerEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect()
-    const ui = useReviewUi.getState()
-    ui.seek(Math.min(duration, Math.max(0, (event.clientX - rect.left) / zoom)))
-  }
 
   return (
-    <div
-      className={cn(className, "sticky top-0 z-10 cursor-ew-resize bg-background")}
-      onPointerDown={(event) => {
-        if (event.button !== 0) return
-        event.stopPropagation()
-        event.currentTarget.setPointerCapture(event.pointerId)
-        scrubbing.current = true
-        useReviewUi.getState().video?.pause()
-        seekTo(event)
-      }}
-      onPointerMove={(event) => {
-        if (scrubbing.current) seekTo(event)
-      }}
-      onPointerUp={(event) => {
-        event.stopPropagation()
-        scrubbing.current = false
-      }}
-    >
+    <div className={cn(className, "sticky top-0 z-10 bg-background")}>
       {ticks.map((t) => (
         <span
           key={t}
@@ -64,18 +37,6 @@ export function Ruler({
           {label(t)}
         </span>
       ))}
-      <Knob zoom={zoom} />
     </div>
-  )
-}
-
-/** The playhead's grip on the ruler, so it reads as something to drag. */
-function Knob({ zoom }: { zoom: number }) {
-  const time = useReviewUi((s) => s.time)
-  return (
-    <span
-      className="pointer-events-none absolute bottom-0 h-3 w-2.5 -translate-x-1/2 rounded-b-sm bg-foreground"
-      style={{ left: time * zoom }}
-    />
   )
 }

@@ -10,6 +10,9 @@ type ReviewUi = {
   video: HTMLVideoElement | null
   time: number
   playing: boolean
+  /** Playback speed and sound; kept here so a new render file picks them up. */
+  rate: number
+  muted: boolean
   /** Timeline zoom, in pixels per second. */
   zoom: number
   /** Zoom follows the lane width so the whole cut is in view, until the reviewer zooms. */
@@ -32,6 +35,8 @@ type ReviewUi = {
   attach(video: HTMLVideoElement | null): void
   seek(time: number): void
   toggle(): void
+  setRate(rate: number): void
+  setMuted(muted: boolean): void
   setAnchor(anchor: Anchor | null, compose?: boolean): void
   setDrawing(drawing: boolean): void
   setZoom(zoom: number): void
@@ -53,6 +58,8 @@ export const useReviewUi = create<ReviewUi>((set, get) => ({
   video: null,
   time: 0,
   playing: false,
+  rate: 1,
+  muted: false,
   zoom: ZOOM.initial,
   fitted: true,
   anchor: null,
@@ -63,7 +70,13 @@ export const useReviewUi = create<ReviewUi>((set, get) => ({
   asset: null,
   quote: null,
 
-  attach: (video) => set({ video, playing: false, time: video?.currentTime ?? 0 }),
+  attach: (video) => {
+    if (video) {
+      video.playbackRate = get().rate
+      video.muted = get().muted
+    }
+    set({ video, playing: false, time: video?.currentTime ?? 0 })
+  },
   seek: (time) => {
     const { video } = get()
     const t = Math.max(
@@ -78,6 +91,16 @@ export const useReviewUi = create<ReviewUi>((set, get) => ({
     if (!video) return
     if (video.paused) void video.play()
     else video.pause()
+  },
+  setRate: (rate) => {
+    const { video } = get()
+    if (video) video.playbackRate = rate
+    set({ rate })
+  },
+  setMuted: (muted) => {
+    const { video } = get()
+    if (video) video.muted = muted
+    set({ muted })
   },
   setAnchor: (anchor, compose = false) =>
     set((s) => ({
