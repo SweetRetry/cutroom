@@ -76,11 +76,23 @@ export const ASSET_ORIGIN_LABEL: Record<AssetOrigin, string> = {
   generated: "生成",
 }
 
+export const ASSET_KINDS = ["video", "image", "audio", "font", "sticker", "other"] as const
+export type AssetKind = (typeof ASSET_KINDS)[number]
+
+export const ASSET_KIND_LABEL: Record<AssetKind, string> = {
+  video: "视频",
+  image: "图片",
+  audio: "音频",
+  font: "字体",
+  sticker: "贴纸",
+  other: "其他",
+}
+
 const asset = z.object({
   id: z.string().min(1),
   /** Relative to the project folder. */
   path: z.string().min(1),
-  kind: z.enum(["video", "image", "audio", "font", "sticker", "other"]),
+  kind: z.enum(ASSET_KINDS),
   origin: z.enum(ASSET_ORIGINS),
   name: z.string().optional(),
   duration: seconds.optional(),
