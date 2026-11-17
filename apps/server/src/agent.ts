@@ -1,5 +1,5 @@
 import { PATHS } from "@workspace/core/project/layout"
-import { roundPhase } from "@workspace/core/review/state"
+import { isSent, roundPhase } from "@workspace/core/review/state"
 import {
   assetIndexSchema,
   timelineSchema,
@@ -48,15 +48,17 @@ export async function handoff(project: Project, input: Handoff) {
   const replies = input.replies ?? []
   const phase = current && roundPhase(current.name, working.comments, working.agent)
   if (current && phase?.kind === "sent") {
+    // Only what was sent needs a reply; a comment still being written isn't Claude Code's yet.
+    const { comments, rounds } = working.comments
     const ids = new Set(
-      working.comments.comments.filter((c) => c.version === current.name).map((c) => c.id)
+      comments.filter((c) => c.version === current.name && isSent(c, rounds)).map((c) => c.id)
     )
     const stray = replies.filter((r) => !ids.has(r.comment)).map((r) => r.comment)
     if (stray.length) throw new ProjectError(`这些不是 ${current.name} 的评论：${stray.join("、")}`)
     const unanswered = [...ids].filter((id) => !replies.some((r) => r.comment === id))
     if (unanswered.length)
       throw new ProjectError(
-        `这些评论还没有回复：${unanswered.join("、")}。没做的也要写 done: false 和原因`
+        `这些评论还没有回复：${unanswered.join("、")}。没做的也要写 done: false 和原因；没读过的是对方后来补发的，运行不带参数的 cutroom review 取回`
       )
   } else if (replies.length) {
     throw new ProjectError("没有发过来的评论，不需要回复")
@@ -121,10 +123,11 @@ export async function sent(project: Project, version: string) {
 
   const { comments, agent } = await project.working()
   if (roundPhase(version, comments, agent).kind === "drafting") return null
+  // Every batch sent so far; one still being written stays with the reviewer.
   const previous = agent.rounds.find((r) => r.result === version)?.version
   return {
     version,
-    comments: comments.comments.filter((c) => c.version === version),
+    comments: comments.comments.filter((c) => c.version === version && isSent(c, comments.rounds)),
     verdicts: previous
       ? comments.comments
           .filter((c) => c.version === previous && c.resolution)

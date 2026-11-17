@@ -1,7 +1,7 @@
 import { PATHS } from "@workspace/core/project/layout"
 import { buildContext } from "@workspace/core/review/context"
-import { nextCommentId, roundPhase } from "@workspace/core/review/state"
-import type { Anchor, ReviewComment } from "@workspace/core/schema"
+import { isSent, nextCommentId, roundPhase } from "@workspace/core/review/state"
+import type { Anchor, ReviewComment, Round } from "@workspace/core/schema"
 import { anchorSpan } from "@workspace/core/timeline/query"
 
 import { frame } from "./media"
@@ -23,9 +23,11 @@ async function currentRound(project: Project) {
   return { graph: graph!, version, timeline, working, phase }
 }
 
-async function drafting(project: Project) {
+/** Open until the next version is out; sending doesn't close it, so a late thought can follow. */
+async function writable(project: Project) {
   const round = await currentRound(project)
-  if (round.phase.kind !== "drafting") throw new ProjectError("本轮已发出，等下一版再写评论")
+  if (round.phase.kind === "done")
+    throw new ProjectError(`${round.version.name} 已经出了 ${round.phase.result}，评论写在新版本上`)
   return round
 }
 
@@ -41,7 +43,7 @@ export type NewComment = {
  * surroundings and a frame grab. The reviewer never types a timecode or a clip id.
  */
 export async function addComment(project: Project, input: NewComment): Promise<ReviewComment> {
-  const { version, timeline, working } = await drafting(project)
+  const { version, timeline, working } = await writable(project)
   const text = input.text.trim()
   if (!text) throw new ProjectError("评论不能为空")
 
@@ -76,7 +78,7 @@ export async function addComment(project: Project, input: NewComment): Promise<R
       text,
       anchor: input.anchor,
       context,
-      createdAt: new Date().toISOString(),
+      createdAt: after(file.rounds.filter((r) => r.version === version.name)),
       ...(input.reopens && { reopens: input.reopens }),
       ...(input.finding && { finding: input.finding }),
     }
@@ -85,11 +87,22 @@ export async function addComment(project: Project, input: NewComment): Promise<R
   })
 }
 
+/**
+ * Now, but always later than the version's last send: whether a comment went out is read from
+ * that order (`isSent`), so one written in the same millisecond as a send must not count as sent.
+ * The write queue makes this the only writer of both times.
+ */
+function after(sends: Round[]) {
+  const last = Math.max(0, ...sends.map((r) => Date.parse(r.submittedAt)))
+  return new Date(Math.max(Date.now(), last + 1)).toISOString()
+}
+
 export async function deleteDraft(project: Project, id: string) {
-  const { version } = await drafting(project)
+  const { version } = await writable(project)
   await project.updateComments((file) => {
     const target = file.comments.find((c) => c.id === id)
     if (!target || target.version !== version.name) throw new ProjectError(`${id} 不是本轮的评论`)
+    if (isSent(target, file.rounds)) throw new ProjectError(`${id} 已经发给 Claude Code，不能删除`)
     return { ...file, comments: file.comments.filter((c) => c.id !== id) }
   })
 }
@@ -102,11 +115,15 @@ export async function resolve(project: Project, id: string, resolution: "closed"
   })
 }
 
-/** Sends the round's comments to the editing side; `cutroom review` is waiting for this. */
+/**
+ * Sends the round's unsent comments to the editing side; `cutroom review` is waiting for this.
+ * Sending again later adds another batch to the same round.
+ */
 export async function send(project: Project) {
-  const { version, working } = await drafting(project)
-  const drafts = working.comments.comments.filter((c) => c.version === version.name)
-  if (drafts.length === 0) throw new ProjectError("本轮还没有评论")
+  const { version, working } = await writable(project)
+  const { comments, rounds } = working.comments
+  const drafts = comments.filter((c) => c.version === version.name && !isSent(c, rounds))
+  if (drafts.length === 0) throw new ProjectError("没有未发送的评论")
   await project.updateComments((file) => ({
     ...file,
     rounds: [...file.rounds, { version: version.name, submittedAt: new Date().toISOString() }],
@@ -115,7 +132,7 @@ export async function send(project: Project) {
 }
 
 export async function dismissFinding(project: Project, id: string) {
-  await drafting(project)
+  await writable(project)
   await project.updateComments((file) => ({
     ...file,
     dismissed: [...new Set([...file.dismissed, id])],

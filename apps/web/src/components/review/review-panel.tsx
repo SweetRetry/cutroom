@@ -17,7 +17,8 @@ import { Composer } from "./composer"
 
 export function ReviewPanel({ session, className }: { session: Session; className?: string }) {
   const { phase, comments = [], previous, findings = [], editable } = session
-  const drafting = editable && phase?.kind === "drafting"
+  // Writing stays open after sending, until the next version is out.
+  const writable = editable && !!phase && phase.kind !== "done"
   const confirmed = new Set(comments.map((c) => c.comment.finding).filter(Boolean))
   const open = findings.filter((f) => !confirmed.has(f.id))
   const verdicts =
@@ -37,7 +38,7 @@ export function ReviewPanel({ session, className }: { session: Session; classNam
             </Section>
           )}
 
-          {drafting && open.length > 0 && (
+          {writable && open.length > 0 && (
             <Section title="预检发现">
               {open.map((f) => (
                 <FindingItem key={f.id} finding={f} session={session} />
@@ -55,7 +56,7 @@ export function ReviewPanel({ session, className }: { session: Session; classNam
         </div>
       </ScrollArea>
       {/* The bottom slot: the comment box while the round is open. The header says when it's sent. */}
-      {drafting && <Composer session={session} />}
+      {writable && <Composer session={session} />}
       {!editable && session.current && (
         <p className="border-t p-4 text-muted-foreground">
           历史版本仅供查看，评论写在当前版本 {session.current.name} 上。
@@ -176,7 +177,7 @@ function Verdict({ view, session }: { view: CommentView; session: Session }) {
   const [reopening, setReopening] = useState(false)
   const [text, setText] = useState("")
   const id = view.comment.id
-  const canReopen = session.phase?.kind === "drafting"
+  const canReopen = !!session.phase && session.phase.kind !== "done"
 
   const resolve = (resolution: "closed" | "reopened") =>
     act(() => unwrap(api.comments({ id }).resolution.post({ p, resolution })), "操作失败")

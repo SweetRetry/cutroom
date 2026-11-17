@@ -49,8 +49,9 @@ function ReviewActions({ session }: { session: Session }) {
 const PROMPT = "看评论"
 
 /**
- * Sending ends the reviewer's half of the round. Claude Code usually sits in `cutroom review`
- * waiting for exactly this, and the header says so; when it isn't, the toast says how to resume.
+ * Sending hands the round's comments to Claude Code, which usually sits in `cutroom review`
+ * waiting for exactly this; the header says so, and when it isn't the toast says how to resume.
+ * Comments written after a send go out with the next one.
  */
 function RoundAction({ session, phase }: { session: Session; phase: RoundPhase }) {
   const p = useProjectPath()
@@ -58,7 +59,8 @@ function RoundAction({ session, phase }: { session: Session; phase: RoundPhase }
   const drafts = session.comments?.filter((c) => c.status === "draft").length ?? 0
   const listening = !!session.files?.listening
 
-  if (phase.kind !== "drafting") {
+  // After a send the round stays open: new comments wait here until they're sent too.
+  if (phase.kind !== "drafting" && drafts === 0) {
     return (
       <span className="inline-flex items-center gap-2 text-muted-foreground">
         <span className="size-1.5 rounded-full bg-subtle-foreground" />

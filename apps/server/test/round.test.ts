@@ -106,6 +106,39 @@ test("a version can't be committed until every sent comment has a reply", async 
   expect(lastCommit()).toBe("v3: 裁掉开场")
 })
 
+test("comments written after sending go out with the next send and still need replies", async () => {
+  const comment = (text: string) =>
+    post("/api/comments", { p: project, text, anchor: { kind: "global" } })
+  const ids = async () =>
+    (await sent("v3")).body.result?.comments.map((c: { id: string }) => c.id) ?? null
+
+  await comment("节奏偏慢")
+  expect((await post("/api/round/send", { p: project })).body.count).toBe(1)
+  const late = await comment("结尾再短一点")
+  expect(late.status).toBe(200)
+  // Unsent, it stays with the reviewer: not handed to Claude Code, still deletable.
+  expect(await ids()).toEqual(["c-05"])
+
+  expect((await post("/api/round/send", { p: project })).body.count).toBe(1)
+  expect(await ids()).toEqual(["c-05", "c-06"])
+  const remove = await call(`/api/comments/c-06?p=${encodeURIComponent(project)}`, {
+    method: "DELETE",
+  })
+  expect(remove).toEqual({
+    status: 409,
+    body: { message: "c-06 已经发给 Claude Code，不能删除" },
+  })
+
+  copyFileSync(join(project, "renders/v3.mp4"), join(project, "renders/v4.mp4"))
+  const partial = await post("/api/handoff", {
+    p: project,
+    summary: "放快节奏",
+    replies: [{ comment: "c-05", text: "整体提速 10%", done: true }],
+  })
+  expect(partial.body.message).toStartWith("这些评论还没有回复：c-06")
+  expect(lastCommit()).toBe("v3: 裁掉开场")
+})
+
 test("requests addressed to another host are refused", async () => {
   const res = await app.handle(new Request("http://evil.example/api/recent"))
   expect(res.status).toBe(403)

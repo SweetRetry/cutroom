@@ -1,8 +1,8 @@
 import type { AgentFile, AgentRound, CommentsFile, ReviewComment, Round } from "../schema"
 
 /**
- * One round reviews one version: the reviewer comments on it and sends the batch, the editing
- * side works on it and produces the next version. The phase is derived from the two review
+ * One round reviews one version: the reviewer comments on it and sends, possibly in several
+ * batches, and the editing side works on it and produces the next version. The phase is derived from the two review
  * files, never stored, so neither writer can leave it inconsistent.
  */
 export type RoundPhase = { kind: "drafting" } | { kind: "sent" } | { kind: "done"; result: string }
@@ -54,9 +54,18 @@ function statusOf(
   reply: CommentView["reply"]
 ): CommentStatus {
   if (comment.resolution) return comment.resolution
-  if (!rounds.some((r) => r.version === comment.version)) return "draft"
+  if (!isSent(comment, rounds)) return "draft"
   if (reply) return "replied"
   return agentRound?.result ? "missed" : "pending"
+}
+
+/**
+ * A round can be sent more than once: the reviewer may add comments after sending and send
+ * again. A comment went out with the first send made at or after it was written.
+ */
+export function isSent(comment: ReviewComment, rounds: Round[]): boolean {
+  const written = Date.parse(comment.createdAt)
+  return rounds.some((r) => r.version === comment.version && Date.parse(r.submittedAt) >= written)
 }
 
 export function nextCommentId(comments: ReviewComment[]): string {
