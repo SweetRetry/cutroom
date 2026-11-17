@@ -47,7 +47,6 @@ test("the wait returns nothing until the reviewer sends, then the round's commen
   for (const text of ["开场太长", "这里穿帮"]) {
     const res = await post("/api/comments", {
       p: project,
-      intent: "issue",
       text,
       anchor: { kind: "point", time: { start: 1, end: 1 } },
     })

@@ -25,20 +25,12 @@ export const LANE_PX: Record<Track["kind"], number> = {
 }
 
 /**
- * Clips, seams and marks pick on pointer down (so a drag can start from them) and on click
- * only when the click came from the keyboard.
+ * Clips, seams and marks are buttons the lanes press for you: a drag that starts on one selects
+ * a span across it, and a press that doesn't move clicks it (see the timeline's pointer up).
+ * The keyboard clicks them directly.
  */
 export function activate(pick: () => void) {
-  return {
-    onPointerDown: (e: React.PointerEvent) => {
-      if (e.button !== 0) return
-      e.stopPropagation()
-      pick()
-    },
-    onClick: (e: React.MouseEvent) => {
-      if (e.detail === 0) pick()
-    },
-  }
+  return { "data-pick": true, onClick: pick }
 }
 
 const TONE: Record<Track["kind"], string> = {

@@ -130,18 +130,6 @@ export const anchorSchema = z.object({
 })
 export type Anchor = z.infer<typeof anchorSchema>
 
-export const INTENTS = ["issue", "change", "add", "feel", "keep", "question"] as const
-export type Intent = (typeof INTENTS)[number]
-
-export const INTENT_LABEL: Record<Intent, string> = {
-  issue: "问题",
-  change: "修改",
-  add: "添加",
-  feel: "感觉",
-  keep: "保留",
-  question: "提问",
-}
-
 /** Filled in by the app when a comment is written, so Claude Code needn't look anything up. */
 const context = z.object({
   /** PNG of the anchor's first frame with the region drawn on it, relative to the project. */
@@ -170,7 +158,6 @@ const comment = z.object({
   id: z.string().regex(/^c-\d+$/),
   /** The version this comment was written on; it is also the round it belongs to. */
   version: z.string(),
-  intent: z.enum(INTENTS),
   text: z.string(),
   anchor: anchorSchema,
   context,

@@ -1,10 +1,9 @@
-import type { Anchor, Intent } from "@workspace/core/schema"
+import type { Anchor } from "@workspace/core/schema"
 
 import { api, unwrap } from "../api"
 import { useProjectPath, useRefresh } from "../project/hooks"
 
 type Draft = {
-  intent: Intent
   text: string
   anchor: Anchor | null
   reopens?: string

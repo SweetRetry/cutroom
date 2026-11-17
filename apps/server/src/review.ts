@@ -1,7 +1,7 @@
 import { PATHS } from "@workspace/core/project/layout"
 import { buildContext } from "@workspace/core/review/context"
 import { nextCommentId, roundPhase } from "@workspace/core/review/state"
-import type { Anchor, Intent, ReviewComment } from "@workspace/core/schema"
+import type { Anchor, ReviewComment } from "@workspace/core/schema"
 import { anchorSpan } from "@workspace/core/timeline/query"
 
 import { frame } from "./media"
@@ -30,7 +30,6 @@ async function drafting(project: Project) {
 }
 
 export type NewComment = {
-  intent: Intent
   text: string
   anchor: Anchor
   reopens?: string
@@ -74,7 +73,6 @@ export async function addComment(project: Project, input: NewComment): Promise<R
     const comment: ReviewComment = {
       id,
       version: version.name,
-      intent: input.intent,
       text,
       anchor: input.anchor,
       context,

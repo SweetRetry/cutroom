@@ -42,7 +42,12 @@ export function Timeline({ session, className }: { session: Session; className?:
   const rendered = !!useMediaUrl(renderFile)
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
-  const [drag, setDrag] = useState<{ from: number; to: number; moved: boolean }>()
+  const [drag, setDrag] = useState<{
+    from: number
+    to: number
+    moved: boolean
+    target: HTMLElement | null
+  }>()
 
   const tracks = useMemo(
     () =>
@@ -93,7 +98,9 @@ export function Timeline({ session, className }: { session: Session; className?:
     if (event.button !== 0) return
     event.currentTarget.setPointerCapture(event.pointerId)
     const t = snapped(timeAt(event.clientX))
-    setDrag({ from: t, to: t, moved: false })
+    // A clip, seam or mark under the press is clicked on release if the pointer never moved.
+    const target = (event.target as Element).closest<HTMLElement>("[data-pick]")
+    setDrag({ from: t, to: t, moved: false, target })
   }
   const onPointerMove = (event: React.PointerEvent) => {
     if (!drag) return
@@ -107,6 +114,7 @@ export function Timeline({ session, className }: { session: Session; className?:
     const start = Math.min(drag.from, drag.to)
     const end = Math.max(drag.from, drag.to)
     if (drag.moved && end > start) pick({ kind: "range", time: { start, end } }, start)
+    else if (drag.target) drag.target.click()
     else pick({ kind: "point", time: { start, end: start } }, start)
   }
 

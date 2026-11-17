@@ -57,16 +57,11 @@ export function ReviewPanel({ session, className }: { session: Session; classNam
           )}
         </div>
       </ScrollArea>
-      {/* The bottom slot: the comment box while the round is open, otherwise why it is closed. */}
+      {/* The bottom slot: the comment box while the round is open. The header says when it's sent. */}
       {drafting && <Composer session={session} />}
       {!editable && session.current && (
         <p className="border-t p-4 text-muted-foreground">
           只读。评论只能写在当前版本 {session.current.name} 上。
-        </p>
-      )}
-      {editable && phase && !drafting && (
-        <p className="border-t p-4 text-muted-foreground">
-          已发给 Claude Code。下一版出来后，在新版本上继续评论。
         </p>
       )}
     </aside>
@@ -146,7 +141,6 @@ function FindingItem({ finding, session }: { finding: Finding; session: Session 
             void act(
               () =>
                 add({
-                  intent: "issue",
                   text: finding.text,
                   anchor: finding.anchor,
                   finding: finding.id,
@@ -191,7 +185,7 @@ function Verdict({ view, session }: { view: CommentView; session: Session }) {
     act(async () => {
       if (!text.trim()) return
       // The follow-up comment first: a failed add must not leave the old one marked reopened.
-      await add({ intent: view.comment.intent, text, anchor: view.comment.anchor, reopens: id })
+      await add({ text, anchor: view.comment.anchor, reopens: id })
       await unwrap(api.comments({ id }).resolution.post({ p, resolution: "reopened" }))
     }, "没能重新打开")
 

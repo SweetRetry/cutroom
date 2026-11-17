@@ -6,7 +6,6 @@ import { commentView } from "../src/review/state"
 const comment = (id: string): ReviewComment => ({
   id,
   version: "v2",
-  intent: "change",
   text: "缩短",
   anchor: { kind: "global" },
   context: { neighbors: [], concurrent: [], history: [] },

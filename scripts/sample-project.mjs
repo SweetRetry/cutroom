@@ -252,7 +252,6 @@ write("review/comments.json", {
     {
       id: "c-01",
       version: "v1",
-      intent: "change",
       text: "彩条这段太拖，缩短一半",
       anchor: { kind: "clip", track: "main", clip: "clip-02", time: { start: 4, end: 9 } },
       context: {
@@ -266,7 +265,6 @@ write("review/comments.json", {
     {
       id: "c-02",
       version: "v1",
-      intent: "add",
       text: "这里硬切太突然，加个转场",
       anchor: {
         kind: "seam",

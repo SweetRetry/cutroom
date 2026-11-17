@@ -5,7 +5,7 @@ import { dirname, join } from "node:path"
 import { Elysia } from "elysia"
 import { z } from "zod"
 
-import { anchorSchema, INTENTS, replySchema } from "@workspace/core/schema"
+import { anchorSchema, replySchema } from "@workspace/core/schema"
 
 import { handoff, sent } from "./agent"
 import { eventStream, pageOpen } from "./events"
@@ -91,7 +91,6 @@ const api = new Elysia({ prefix: "/api" })
     {
       body: z.object({
         p: z.string(),
-        intent: z.enum(INTENTS),
         text: z.string(),
         anchor: anchorSchema,
         reopens: z.string().optional(),

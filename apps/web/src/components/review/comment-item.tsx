@@ -2,7 +2,6 @@ import { cn } from "@workspace/ui/lib/utils"
 import type { ReactNode } from "react"
 
 import { useAssets } from "@/lib/project/hooks"
-import { INTENT_LABEL } from "@workspace/core/schema"
 import { describeAnchor } from "@workspace/core/review/describe"
 import type { Session } from "@/lib/review/session"
 import type { CommentStatus, CommentView } from "@workspace/core/review/state"
@@ -43,12 +42,12 @@ export function CommentItem({
       )}
     >
       <button type="button" onClick={reveal} className="flex flex-col gap-1 text-left">
-        <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{INTENT_LABEL[comment.intent]}</span>
-          <span className="min-w-0 truncate tabular-nums">
-            {place.kind} {place.detail}
+        {/* The place wraps rather than truncates: clip names are long, and the times must show. */}
+        <span className="flex items-start gap-2 text-xs text-muted-foreground">
+          <span className="min-w-0 flex-1 tabular-nums">
+            <span className="font-medium text-foreground">{place.kind}</span> {place.detail}
           </span>
-          {!QUIET.has(status) && <StatusDot status={status} className="ml-auto shrink-0" />}
+          {!QUIET.has(status) && <StatusDot status={status} className="shrink-0" />}
         </span>
         <span>{comment.text}</span>
       </button>
