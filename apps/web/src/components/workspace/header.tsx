@@ -1,21 +1,17 @@
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
-import { GitCompareArrows } from "lucide-react"
 import { toast } from "sonner"
 
-import { Link } from "@tanstack/react-router"
 import type { RoundPhase } from "@workspace/core/review/state"
 
 import { api, unwrap } from "@/lib/api"
 import { useProjectPath, useRefresh } from "@/lib/project/hooks"
 import { useViewNavigation, type Session } from "@/lib/review/session"
-import { ChangesPopover } from "../review/changes"
-import { VersionSwitcher } from "./versions"
+import { useReviewUi } from "@/lib/review/ui-store"
+import { ProjectMenu } from "./project-menu"
 
-export function Header({ session, className }: { session: Session; className?: string }) {
-  const { view } = useViewNavigation()
-  const { current, editable } = session
-
+/** The window's top bar. Without a session it is the empty workspace's: only the folder menu. */
+export function Header({ session, className }: { session?: Session; className?: string }) {
   return (
     // Narrow screens scroll the whole page; the header stays so the round's action stays in reach.
     <header
@@ -24,17 +20,18 @@ export function Header({ session, className }: { session: Session; className?: s
         className
       )}
     >
-      <Link
-        to="/"
-        search={{}}
-        className="min-w-0 truncate font-medium transition-colors hover:text-muted-foreground"
-        title="换一个项目"
-      >
-        {session.files?.name ?? ""}
-      </Link>
-      <VersionSwitcher session={session} />
-      <CompareToggle session={session} />
-      <ChangesPopover session={session} />
+      <ProjectMenu path={session?.files?.path} name={session?.files?.name} />
+      {session && <ReviewActions session={session} />}
+    </header>
+  )
+}
+
+function ReviewActions({ session }: { session: Session }) {
+  const { view } = useViewNavigation()
+  const { current, editable } = session
+  return (
+    <>
+      <VersionName session={session} />
       <div className="ml-auto flex shrink-0 items-center gap-4">
         {!editable && current ? (
           <Button variant="secondary" onClick={() => void view(undefined)}>
@@ -44,7 +41,7 @@ export function Header({ session, className }: { session: Session; className?: s
           session.phase && <RoundAction session={session} phase={session.phase} />
         )}
       </div>
-    </header>
+    </>
   )
 }
 
@@ -105,23 +102,28 @@ function RoundAction({ session, phase }: { session: Session; phase: RoundPhase }
 }
 
 /**
- * Comparing is how a reviewer sees what a version changed, so it sits next to the version name
- * and defaults to the version this one was cut from. Any other pair is in the version list.
+ * Which version the stage shows, and on which branch. Versions and their comparison live in the
+ * left rail's 版本 panel; the name opens it.
  */
-function CompareToggle({ session }: { session: Session }) {
-  const { compare } = useViewNavigation()
-  const { comparing, base } = session
-  if (comparing)
-    return (
-      <Button variant="secondary" size="sm" onClick={() => void compare(undefined)}>
-        结束对比 {comparing.name}
-      </Button>
-    )
-  if (!base) return null
+function VersionName({ session }: { session: Session }) {
+  const setPanel = useReviewUi((s) => s.setPanel)
+  const { viewing, comparing, editable } = session
+  if (!viewing) return null
   return (
-    <Button variant="ghost" size="sm" onClick={() => void compare(base.name)}>
-      <GitCompareArrows data-icon="inline-start" />
-      对比 {base.name}
+    <Button
+      variant="ghost"
+      size="sm"
+      className="shrink-0"
+      title="查看所有版本"
+      onClick={() => setPanel("versions")}
+    >
+      <span className="font-medium tabular-nums">{viewing.name}</span>
+      {comparing && (
+        <span className="text-xs text-muted-foreground tabular-nums">对比 {comparing.name}</span>
+      )}
+      {session.graph?.branch && editable && (
+        <span className="text-xs text-subtle-foreground">{session.graph.branch}</span>
+      )}
     </Button>
   )
 }

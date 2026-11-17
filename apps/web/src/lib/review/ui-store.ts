@@ -22,6 +22,8 @@ type ReviewUi = {
   focused: string | null
   /** Bumped to move keyboard focus to the comment box (after M, or after picking an anchor). */
   composeTick: number
+  /** Which panel the left rail shows. */
+  panel: SidePanel
 
   attach(video: HTMLVideoElement | null): void
   seek(time: number): void
@@ -33,7 +35,10 @@ type ReviewUi = {
   fitTo(zoom: number): void
   fit(): void
   focus(id: string | null): void
+  setPanel(panel: SidePanel): void
 }
+
+export type SidePanel = "assets" | "versions"
 
 const ZOOM = { min: 8, max: 400, initial: 48 } as const
 const clampZoom = (zoom: number) => Math.min(ZOOM.max, Math.max(ZOOM.min, zoom))
@@ -48,6 +53,7 @@ export const useReviewUi = create<ReviewUi>((set, get) => ({
   drawing: false,
   focused: null,
   composeTick: 0,
+  panel: "assets",
 
   attach: (video) => set({ video, playing: false, time: video?.currentTime ?? 0 }),
   seek: (time) => {
@@ -81,4 +87,5 @@ export const useReviewUi = create<ReviewUi>((set, get) => ({
   },
   fit: () => set({ fitted: true }),
   focus: (focused) => set({ focused }),
+  setPanel: (panel) => set({ panel }),
 }))

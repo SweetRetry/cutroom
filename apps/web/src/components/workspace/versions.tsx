@@ -8,9 +8,7 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import { Input } from "@workspace/ui/components/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover"
 import { cn } from "@workspace/ui/lib/utils"
-import { ChevronDown } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 
@@ -19,6 +17,7 @@ import type { Version } from "server/app"
 import { api, unwrap } from "@/lib/api"
 import { useProjectPath, useRefresh } from "@/lib/project/hooks"
 import { useViewNavigation, type Session } from "@/lib/review/session"
+import { ChangeList } from "../review/changes"
 
 const when = new Intl.DateTimeFormat("zh-CN", {
   month: "numeric",
@@ -28,62 +27,36 @@ const when = new Intl.DateTimeFormat("zh-CN", {
 })
 
 /**
- * The version name in the header opens every version on every branch, newest first: open one,
- * compare it, or continue from it. Versions change rarely, so they live behind the name instead
- * of taking a column. The continue dialog sits outside the popover so closing one keeps the other.
+ * Every version on every branch, newest first: open one, compare it, or continue from it. While
+ * comparing, what the cut changed sits right under the list, so picking the pair and reading the
+ * difference happen in one place. The continue dialog is a sibling so it outlives a re-render.
  */
-export function VersionSwitcher({ session }: { session: Session }) {
-  const [open, setOpen] = useState(false)
+export function VersionPanel({ session }: { session: Session }) {
   const [target, setTarget] = useState<Version>()
-  const { viewing, editable } = session
-  if (!viewing) return null
 
   return (
-    <>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          render={
-            <Button variant="ghost" size="sm" aria-label="切换版本" className="-ml-2.5 shrink-0">
-              <span className="font-medium tabular-nums">{viewing.name}</span>
-              {session.graph?.branch && editable && (
-                <span className="text-xs text-subtle-foreground">{session.graph.branch}</span>
-              )}
-              <ChevronDown data-icon="inline-end" />
-            </Button>
-          }
-        />
-        <PopoverContent align="start" className="w-80">
-          <VersionList
-            session={session}
-            onDone={() => setOpen(false)}
-            onContinue={(v) => {
-              setOpen(false)
-              setTarget(v)
-            }}
-          />
-        </PopoverContent>
-      </Popover>
+    <div className="flex flex-col gap-6 px-4 pb-4">
+      <VersionList session={session} onContinue={setTarget} />
+      <ChangeList session={session} />
       {target && (
         <ContinueDialog version={target} session={session} onClose={() => setTarget(undefined)} />
       )}
-    </>
+    </div>
   )
 }
 
 function VersionList({
   session,
-  onDone,
   onContinue,
 }: {
   session: Session
-  onDone: () => void
   onContinue: (version: Version) => void
 }) {
   const { view, compare } = useViewNavigation()
   const versions = session.graph?.versions ?? []
 
   return (
-    <ul className="flex max-h-96 flex-col overflow-y-auto">
+    <ul className="-mx-2 flex flex-col gap-1">
       {versions.map((v) => {
         const isCurrent = v.oid === session.current?.oid
         const isViewing = v.oid === session.viewing?.oid
@@ -92,7 +65,7 @@ function VersionList({
           <li
             key={v.oid}
             className={cn(
-              "flex flex-col gap-1 rounded-sm px-2 py-2 transition-colors",
+              "flex flex-col gap-1 rounded-md px-2 py-2 transition-colors",
               isViewing ? "bg-accent" : "hover:bg-accent/50"
             )}
           >
@@ -101,7 +74,6 @@ function VersionList({
               className="flex flex-col gap-1 text-left"
               onClick={() => {
                 void view(isCurrent ? undefined : v.name)
-                onDone()
               }}
             >
               <span className="flex items-baseline gap-2">
@@ -121,7 +93,6 @@ function VersionList({
                   aria-pressed={isComparing}
                   onClick={() => {
                     void compare(isComparing ? undefined : v.name)
-                    onDone()
                   }}
                 >
                   {isComparing ? "结束对比" : `对比 ${v.name}`}

@@ -17,7 +17,7 @@ export function Workspace() {
   return (
     // DOM order is task order (watch, pick a place, comment, browse versions): narrow screens
     // read it as one scrolling column, wide screens place it as a fixed-height editor.
-    <div className="flex min-h-dvh flex-col bg-background text-sm lg:grid lg:h-dvh lg:min-h-0 lg:grid-cols-[14rem_minmax(0,1fr)_20rem] lg:grid-rows-[auto_minmax(0,1fr)_auto] xl:grid-cols-[16rem_minmax(0,1fr)_22rem]">
+    <div className="flex min-h-dvh flex-col bg-background text-sm lg:grid lg:h-dvh lg:min-h-0 lg:grid-cols-[17rem_minmax(0,1fr)_20rem] lg:grid-rows-[auto_minmax(0,1fr)_auto] xl:grid-cols-[19rem_minmax(0,1fr)_22rem]">
       <Header session={session} className="lg:col-span-3" />
       {session.error ? (
         <Problem error={session.error} />

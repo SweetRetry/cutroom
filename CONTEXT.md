@@ -4,6 +4,7 @@
 
 - **审片的一方、剪辑的一方。** 一轮里的两个角色。剪辑的一方是 Claude Code，它主导工作：剪、渲染、交接、读评论、回复。审片的一方在页面上看片、写评论、发给 Claude Code、判断回复。界面直接写 Claude Code。
 - **项目文件夹。** 一个视频项目的全部文件，也是 git 仓库。Claude Code 直接写素材、`timeline.json` 和 `assets.json`；`review/` 和版本提交只由本地服务写。格式写在 `skills/cutroom/format.md`。
+- **工作区。** 审片页本身，像编辑器窗口一样只有一个页面：打开一个项目文件夹就在里面审，没打开时是空状态，可以打开文件夹或最近打开的项目。_Avoid_：首页、入口页。
 - **本地服务。** `apps/server`，`review/` 和版本提交的唯一写者。页面和 `cutroom review` 命令都通过 `/api` 使用它。
 - **交接。** Claude Code 运行 `cutroom review`：有新渲染时先提交成新版本，然后打开审片页并等待，审片的一方发送后把评论交回给它。_Avoid_：提交本轮。
 - **版本。** 提交信息以 `vN:` 开头的 git 提交，带一个 `renders/vN.mp4`。版本号在所有分支里递增。_Avoid_：快照、草稿。

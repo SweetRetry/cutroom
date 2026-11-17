@@ -20,6 +20,7 @@ agent.ts     the handoff: check the files, commit a version with replies and fin
 cli.ts       `cutroom review`: start the service, hand off, open the page, wait, print the comments
 media.ts     byte-range streaming, ffmpeg thumbnails, waveform peaks, comment frames
 events.ts    fs.watch on the folder, pushed to pages as SSE
+picker.ts    the OS "choose folder" window, since a page can't learn an absolute path
 app.ts       Elysia routes and the localhost Host check; index.ts listens and serves the built page
 ```
 

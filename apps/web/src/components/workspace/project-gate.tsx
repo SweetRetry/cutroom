@@ -1,19 +1,22 @@
-import { useQuery } from "@tanstack/react-query"
-import { useNavigate, useSearch } from "@tanstack/react-router"
+import { useSearch } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { useState } from "react"
+import { FolderOpen } from "lucide-react"
+import { useEffect, useState } from "react"
 
-import { api, unwrap } from "@/lib/api"
 import { ProjectContext } from "@/lib/project/hooks"
+import { useFolder, useRecent } from "@/lib/project/open"
+import { Header } from "./header"
 import { Workspace } from "./workspace"
 
 /**
- * The project is part of the URL (`?p=/abs/path`), so a review can be bookmarked or opened from
- * the terminal. Without one, pick a recent project or paste a folder path.
+ * One page, like an editor window: the workspace is always there, and the folder in it is the
+ * `p` search param (`?p=/abs/path`), so a review can be bookmarked or opened from the terminal.
+ * With no folder the workspace is empty and offers to open one.
  */
 export function ProjectGate() {
   const { p } = useSearch({ from: "/" })
+  useOpenShortcut()
   if (p) {
     return (
       <ProjectContext.Provider value={p}>
@@ -22,57 +25,75 @@ export function ProjectGate() {
       </ProjectContext.Provider>
     )
   }
-  return <OpenProject />
+  return (
+    <div className="flex min-h-dvh flex-col bg-background text-sm">
+      <Header />
+      <Welcome />
+    </div>
+  )
 }
 
-function OpenProject() {
-  const navigate = useNavigate({ from: "/" })
-  const recent = useQuery({ queryKey: ["recent"], queryFn: () => unwrap(api.recent.get()) })
-  const [path, setPath] = useState("")
-  const [error, setError] = useState<string>()
-
-  const open = async (target: string) => {
-    setError(undefined)
-    try {
-      const project = await unwrap(api.open.post({ path: target.trim() }))
-      await navigate({ search: { p: project.path } })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+/** ⌘O / Ctrl+O opens a folder from anywhere, instead of the browser's own file dialog. */
+function useOpenShortcut() {
+  const { pick } = useFolder()
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "o") return
+      event.preventDefault()
+      void pick()
     }
-  }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  })
+}
+
+/** The empty workspace: open a folder, reopen a recent one, or paste a path. */
+function Welcome() {
+  const { open, pick } = useFolder()
+  const recent = useRecent()
+  const [path, setPath] = useState("")
 
   return (
-    <main className="flex min-h-dvh items-center bg-background px-6">
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-8">
+    <main className="flex flex-1 items-center px-6 py-12">
+      <div className="mx-auto flex w-full max-w-md flex-col gap-8">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold text-balance">Cutroom</h1>
-          <p className="text-sm text-muted-foreground">
-            打开视频项目文件夹，审片、评论、对比版本。
+          <h1 className="text-xl font-semibold">没有打开的文件夹</h1>
+          <p className="text-muted-foreground">
+            打开 Claude Code 剪片的项目文件夹，在这里审片、写评论、对比版本。
           </p>
         </div>
 
         {recent.isError ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             无法连接本地服务。在 Cutroom 仓库运行 pnpm dev 后刷新页面。
           </p>
         ) : (
           <>
+            <Button className="self-start" onClick={() => void pick()}>
+              <FolderOpen data-icon="inline-start" />
+              打开文件夹…
+            </Button>
+
             {(recent.data?.length ?? 0) > 0 && (
-              <ul className="-mx-2 flex flex-col">
-                {recent.data!.map((r) => (
-                  <li key={r}>
-                    <button
-                      type="button"
-                      onClick={() => void open(r)}
-                      className="flex w-full flex-col rounded-md px-2 py-2 text-left transition-colors hover:bg-accent"
-                    >
-                      <span className="text-sm font-medium">{r.split("/").pop()}</span>
-                      <span className="truncate text-xs text-muted-foreground">{r}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <section className="flex flex-col gap-2">
+                <h2 className="text-xs font-medium text-muted-foreground">最近打开</h2>
+                <ul className="-mx-2 flex flex-col">
+                  {recent.data!.map((r) => (
+                    <li key={r}>
+                      <button
+                        type="button"
+                        onClick={() => void open(r)}
+                        className="flex w-full items-baseline gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
+                      >
+                        <span className="shrink-0 font-medium">{r.split("/").pop()}</span>
+                        <span className="min-w-0 truncate text-xs text-muted-foreground">{r}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
+
             <form
               className="flex flex-col gap-2"
               onSubmit={(e) => {
@@ -80,23 +101,20 @@ function OpenProject() {
                 void open(path)
               }}
             >
-              <label htmlFor="project-path" className="text-sm font-medium">
-                文件夹路径
+              <label htmlFor="project-path" className="text-xs font-medium text-muted-foreground">
+                或粘贴文件夹路径
               </label>
               <div className="flex gap-2">
                 <Input
                   id="project-path"
                   value={path}
                   placeholder="/Users/you/Videos/my-cut"
-                  aria-invalid={!!error}
                   onChange={(e) => setPath(e.target.value)}
                 />
-                <Button type="submit" disabled={!path.trim()}>
+                <Button type="submit" variant="secondary" disabled={!path.trim()}>
                   打开
                 </Button>
               </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <p className="text-xs text-muted-foreground">在项目文件夹里运行 pwd 可以拿到路径。</p>
             </form>
           </>
         )}

@@ -1,8 +1,4 @@
-import { Button } from "@workspace/ui/components/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover"
 import { cn } from "@workspace/ui/lib/utils"
-import { ChevronDown } from "lucide-react"
-import { useState } from "react"
 
 import { useAssets } from "@/lib/project/hooks"
 import type { Session } from "@/lib/review/session"
@@ -25,35 +21,11 @@ const CHANGE_LABEL: Record<ClipChange["kind"], string> = {
 }
 
 /**
- * The changes sit behind a button next to the comparison, not in the comment panel: that panel is
- * the conversation with the editing side, and a diff is a fact about two versions.
- */
-export function ChangesPopover({ session }: { session: Session }) {
-  const [open, setOpen] = useState(false)
-  if (!session.diff || !session.comparing) return null
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <Button variant="ghost" size="sm">
-            改动 <span className="tabular-nums">{session.diff.changes.length}</span>
-            <ChevronDown data-icon="inline-end" />
-          </Button>
-        }
-      />
-      <PopoverContent align="start" className="max-h-112 w-96 overflow-y-auto">
-        <ChangeList session={session} onPick={() => setOpen(false)} />
-      </PopoverContent>
-    </Popover>
-  )
-}
-
-/**
  * Everything the cut changed between the compared version and the viewed one, in play order.
  * Picking a change moves the playhead there and, on the current version, puts the comment box on
  * that clip, so "this change made it worse" is one click and a sentence away.
  */
-function ChangeList({ session, onPick }: { session: Session; onPick: () => void }) {
+export function ChangeList({ session }: { session: Session }) {
   const { diff, comparing, viewing, timeline } = session
   const assets = useAssets()
   const anchor = useReviewUi((s) => s.anchor)
@@ -82,12 +54,11 @@ function ChangeList({ session, onPick }: { session: Session; onPick: () => void 
         clip: change.clip.id,
         time: { start: change.clip.start, end: change.clip.end },
       })
-    onPick()
   }
 
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="flex items-center gap-3 text-xs font-medium text-muted-foreground">
+      <h3 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground">
         <span>
           {comparing.name} 到 {viewing.name} 的改动
         </span>

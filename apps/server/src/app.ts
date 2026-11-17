@@ -10,6 +10,7 @@ import { anchorSchema, replySchema } from "@workspace/core/schema"
 import { handoff, sent } from "./agent"
 import { eventStream, pageOpen } from "./events"
 import { peaks, serveFile, thumbnail } from "./media"
+import { pickFolder } from "./picker"
 import { projectAt, ProjectError } from "./project"
 import { addComment, deleteDraft, dismissFinding, resolve, send } from "./review"
 
@@ -50,6 +51,8 @@ const p = z.object({ p: z.string() })
 
 const api = new Elysia({ prefix: "/api" })
   .get("/recent", () => recent())
+  // Opens the OS folder picker on this machine; the page then opens what was picked.
+  .post("/pick", async () => ({ path: await pickFolder() }))
   .post(
     "/open",
     async ({ body }) => {
