@@ -9,5 +9,5 @@ const service = `http://127.0.0.1:${process.env.CUTROOM_PORT ?? 4317}`
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [react(), tailwindcss()],
-  server: { proxy: { "/api": service, "/mcp": service } },
+  server: { proxy: { "/api": service } },
 })

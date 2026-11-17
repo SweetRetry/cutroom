@@ -9,6 +9,7 @@ import type { RoundPhase } from "@workspace/core/review/state"
 import { api, unwrap } from "@/lib/api"
 import { useProjectPath, useRefresh } from "@/lib/project/hooks"
 import { useViewNavigation, type Session } from "@/lib/review/session"
+import { ChangesPopover } from "../review/changes"
 import { VersionSwitcher } from "./versions"
 
 export function Header({ session, className }: { session: Session; className?: string }) {
@@ -33,6 +34,7 @@ export function Header({ session, className }: { session: Session; className?: s
       </Link>
       <VersionSwitcher session={session} />
       <CompareToggle session={session} />
+      <ChangesPopover session={session} />
       <div className="ml-auto flex shrink-0 items-center gap-4">
         {!editable && current ? (
           <Button variant="secondary" onClick={() => void view(undefined)}>
@@ -46,53 +48,59 @@ export function Header({ session, className }: { session: Session; className?: s
   )
 }
 
-const WAITING: Partial<Record<RoundPhase["kind"], string>> = {
-  "awaiting-plan": "等待计划",
-  "plan-ready": "计划待你确认",
-  objected: "等待改写计划",
-  approved: "计划已通过，等待执行",
-  done: "等待新版本",
-}
+/** What to say in Claude Code when it wasn't waiting; the cutroom skill knows it. */
+const PROMPT = "看评论"
 
-const PROMPT = "处理本轮评论"
-
+/**
+ * Sending ends the reviewer's half of the round. Claude Code usually sits in `cutroom review`
+ * waiting for exactly this, and the header says so; when it isn't, the toast says how to resume.
+ */
 function RoundAction({ session, phase }: { session: Session; phase: RoundPhase }) {
   const p = useProjectPath()
   const refresh = useRefresh()
   const drafts = session.comments?.filter((c) => c.status === "draft").length ?? 0
+  const listening = !!session.files?.listening
 
   if (phase.kind !== "drafting") {
-    const attention = phase.kind === "plan-ready"
     return (
       <span className="inline-flex items-center gap-2 text-muted-foreground">
-        <span
-          className={cn("size-1.5 rounded-full", attention ? "bg-warning" : "bg-subtle-foreground")}
-        />
-        {WAITING[phase.kind]}
+        <span className="size-1.5 rounded-full bg-subtle-foreground" />
+        已发给 Claude Code，等新版本
       </span>
     )
   }
 
-  const submit = async () => {
+  const send = async () => {
+    let result
     try {
-      await unwrap(api.round.submit.post({ p }))
+      result = await unwrap(api.round.send.post({ p }))
     } catch (error) {
-      toast.error("没能提交", { description: error instanceof Error ? error.message : undefined })
+      toast.error("没能发送", { description: error instanceof Error ? error.message : undefined })
       return
     }
     await refresh()
-    toast.success(`已提交 ${drafts} 条评论`, {
-      description: `下一步先出计划，确认后再改。剪辑的一方可以用这句话开始：“${PROMPT}”。`,
-      action: { label: "复制", onClick: () => void navigator.clipboard.writeText(PROMPT) },
-      duration: 10000,
-    })
+    if (result.listening) toast.success(`已发给 Claude Code，${result.count} 条评论`)
+    else
+      toast.success(`已发送 ${result.count} 条评论`, {
+        description: `Claude Code 现在没在等。在对话里说“${PROMPT}”，它就会读到。`,
+        action: { label: "复制", onClick: () => void navigator.clipboard.writeText(PROMPT) },
+        duration: 10000,
+      })
   }
 
   return (
-    <Button disabled={drafts === 0} onClick={() => void submit()}>
-      提交本轮
-      {drafts > 0 && <span className="tabular-nums">{drafts}</span>}
-    </Button>
+    <>
+      {listening && (
+        <span className="inline-flex items-center gap-2 text-muted-foreground">
+          <span className="size-1.5 rounded-full bg-primary" />
+          Claude Code 在等
+        </span>
+      )}
+      <Button disabled={drafts === 0} onClick={() => void send()}>
+        发给 Claude Code
+        {drafts > 0 && <span className="tabular-nums">{drafts}</span>}
+      </Button>
+    </>
   )
 }
 

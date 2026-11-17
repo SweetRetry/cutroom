@@ -3,7 +3,6 @@ import { ScrollArea } from "@workspace/ui/components/scroll-area"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { cn } from "@workspace/ui/lib/utils"
 import { useState, type ReactNode } from "react"
-import { toast } from "sonner"
 
 import { api, unwrap } from "@/lib/api"
 import { useAction, useProjectPath } from "@/lib/project/hooks"
@@ -13,14 +12,12 @@ import type { CommentView } from "@workspace/core/review/state"
 import { useReviewUi } from "@/lib/review/ui-store"
 import { useAddComment } from "@/lib/review/use-add-comment"
 import { anchorSpan, formatTime } from "@workspace/core/timeline/query"
-import { ChangeList } from "./changes"
 import { CommentItem } from "./comment-item"
 import { Composer } from "./composer"
 
 export function ReviewPanel({ session, className }: { session: Session; className?: string }) {
   const { phase, comments = [], previous, findings = [], editable } = session
   const drafting = editable && phase?.kind === "drafting"
-  const deciding = editable && phase?.kind === "plan-ready"
   const confirmed = new Set(comments.map((c) => c.comment.finding).filter(Boolean))
   const open = findings.filter((f) => !confirmed.has(f.id))
   const verdicts =
@@ -30,21 +27,16 @@ export function ReviewPanel({ session, className }: { session: Session; classNam
     <aside className={cn("flex min-h-0 flex-col lg:bg-sidebar", className)}>
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-8 px-4 pt-4 pb-8">
-          <ChangeList session={session} />
-          {deciding ? (
-            <PlanDecision session={session} />
-          ) : (
-            <Section
-              title={`${session.viewing?.name ?? ""} 的评论`}
-              empty={`${session.viewing?.name ?? ""} 还没有评论。`}
-            >
-              {comments.map((view) => (
-                <CommentItem key={view.comment.id} view={view} session={session}>
-                  {view.status === "draft" && <DeleteDraft id={view.comment.id} />}
-                </CommentItem>
-              ))}
-            </Section>
-          )}
+          <Section
+            title={`${session.viewing?.name ?? ""} 的评论`}
+            empty={`${session.viewing?.name ?? ""} 还没有评论。`}
+          >
+            {comments.map((view) => (
+              <CommentItem key={view.comment.id} view={view} session={session}>
+                {view.status === "draft" && <DeleteDraft id={view.comment.id} />}
+              </CommentItem>
+            ))}
+          </Section>
 
           {drafting && open.length > 0 && (
             <Section title="预检发现">
@@ -72,9 +64,9 @@ export function ReviewPanel({ session, className }: { session: Session; classNam
           只读。评论只能写在当前版本 {session.current.name} 上。
         </p>
       )}
-      {editable && phase && !drafting && !deciding && (
+      {editable && phase && !drafting && (
         <p className="border-t p-4 text-muted-foreground">
-          本轮已提交。下一版出来后，在新版本上继续评论。
+          已发给 Claude Code。下一版出来后，在新版本上继续评论。
         </p>
       )}
     </aside>
@@ -115,71 +107,6 @@ function DeleteDraft({ id }: { id: string }) {
     >
       删除
     </Button>
-  )
-}
-
-/** The plan is shown per comment; an objection is written next to the item it is about. */
-function PlanDecision({ session }: { session: Session }) {
-  const p = useProjectPath()
-  const act = useAction()
-  const [objections, setObjections] = useState<Record<string, string>>({})
-  const [objecting, setObjecting] = useState<Set<string>>(new Set())
-  const revision = session.phase?.kind === "plan-ready" ? session.phase.revision : 0
-  const written = Object.fromEntries(Object.entries(objections).filter(([, v]) => v.trim()))
-  const objected = Object.keys(written).length > 0
-
-  const decide = async () => {
-    const done = await act(
-      () => unwrap(api.round.decision.post({ p, revision, objections: written })),
-      "没能提交决定"
-    )
-    if (!done) return
-    toast.success(objected ? "异议已提交" : "计划已通过", {
-      description: objected ? "计划会按异议改写，改好后再来确认。" : "接下来按计划执行，出新版本。",
-    })
-  }
-
-  return (
-    <section className="flex flex-col gap-4">
-      <h3 className="text-xs font-medium text-muted-foreground">
-        计划{revision > 1 ? `（第 ${revision} 稿）` : ""}
-      </h3>
-      {session.unplanned && session.unplanned.length > 0 && (
-        <p className="rounded-md bg-warning-soft px-2 py-1 text-xs text-warning">
-          计划没有提到 {session.unplanned.join("、")}。可以提出异议让它补上。
-        </p>
-      )}
-      <ul className="flex flex-col gap-2">
-        {(session.comments ?? []).map((view) => {
-          const id = view.comment.id
-          return (
-            <CommentItem key={id} view={view} session={session}>
-              {objecting.has(id) ? (
-                <Textarea
-                  autoFocus
-                  rows={2}
-                  placeholder="哪里不同意，想怎么改"
-                  value={objections[id] ?? ""}
-                  onChange={(e) => setObjections({ ...objections, [id]: e.target.value })}
-                />
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  className="-ml-2 self-start"
-                  onClick={() => setObjecting(new Set(objecting).add(id))}
-                >
-                  提出异议
-                </Button>
-              )}
-            </CommentItem>
-          )
-        })}
-      </ul>
-      <Button className="self-start" onClick={() => void decide()}>
-        {objected ? `提交异议 ${Object.keys(written).length} 条` : "通过计划"}
-      </Button>
-    </section>
   )
 }
 

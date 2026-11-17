@@ -184,18 +184,10 @@ const comment = z.object({
 })
 export type ReviewComment = z.infer<typeof comment>
 
+/** A version whose comments the reviewer has sent to the editing side. */
 const round = z.object({
   version: z.string(),
   submittedAt: z.string(),
-  /** The reviewer's answer to a plan revision. Objections are keyed by comment id. */
-  decision: z
-    .object({
-      revision: z.number().int(),
-      status: z.enum(["approved", "objected"]),
-      objections: z.record(z.string(), z.string()).default({}),
-      at: z.string(),
-    })
-    .optional(),
 })
 export type Round = z.infer<typeof round>
 
@@ -209,13 +201,6 @@ export type CommentsFile = z.infer<typeof commentsFileSchema>
 
 // ── Claude Code's side of the review (`review/agent.json`) ────────────────────
 
-const planItem = z.object({
-  comment: z.string(),
-  /** What Claude Code intends to do, or why it won't. */
-  action: z.string(),
-  willChange: z.boolean(),
-})
-
 const reply = z.object({
   comment: z.string(),
   text: z.string(),
@@ -223,11 +208,11 @@ const reply = z.object({
   done: z.boolean(),
 })
 
+export const replySchema = reply
+export type Reply = z.infer<typeof reply>
+
 const agentRound = z.object({
   version: z.string(),
-  /** Bumped every time the plan is rewritten after an objection. */
-  revision: z.number().int().default(1),
-  plan: z.array(planItem).default([]),
   replies: z.array(reply).default([]),
   /** The version this round produced. */
   result: z.string().optional(),

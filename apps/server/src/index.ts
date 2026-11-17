@@ -22,6 +22,3 @@ const server = app
   .listen({ port, hostname: "127.0.0.1" })
 
 console.log(`Cutroom on http://localhost:${server.server?.port}`)
-console.log(
-  `MCP: claude mcp add --transport http cutroom http://localhost:${server.server?.port}/mcp`
-)

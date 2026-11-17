@@ -2,6 +2,9 @@
   "name": "server",
   "version": "0.0.0",
   "private": true,
+  "bin": {
+    "cutroom": "src/cli.ts"
+  },
   "type": "module",
   "exports": {
     "./app": "./src/app.ts"
@@ -13,7 +16,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.2",
     "@workspace/core": "workspace:*",
     "elysia": "^1.4.32",
     "zod": "^4.6.7"

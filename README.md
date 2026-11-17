@@ -1,14 +1,16 @@
 # Cutroom
 
-视频项目的审片与协作服务。剪辑在项目文件夹里进行；在 Cutroom 里看片、在时间轴和画面上标位置写评论、确认计划、对比和回退版本。协作者同级，人或 agent 都可以担任审片或剪辑的一方。
+Claude Code 剪视频时用的审片页。Claude Code 在项目文件夹里剪片，出一版就打开 Cutroom；你看片、在时间轴和画面上标位置写评论，点“发给 Claude Code”，它就接着改。也能对比和回退版本。
+
+安装一次：
 
 ```sh
-pnpm install
-pnpm dev
-claude mcp add --scope user --transport http cutroom http://localhost:4317/mcp   # 剪辑的一方，只需一次
+pnpm install && pnpm build
+ln -s "$PWD/apps/server/src/cli.ts" ~/.local/bin/cutroom   # 全局命令，放进任意 PATH 目录
+ln -s "$PWD/skills/cutroom" ~/.claude/skills/cutroom   # Claude Code 的工作流
 ```
 
-打开页面，粘贴项目文件夹的路径。空文件夹会提示写入项目约定（CLAUDE.md、.gitignore、review/）并初始化 git。之后在那个文件夹里开始剪辑。
+之后在任意目录打开 Claude Code，告诉它素材在哪、想要什么样的片子。它会建项目文件夹、收拾素材、剪出第一版，然后运行 `cutroom review`，页面会自动打开；服务没在运行时命令会自己启动它。
 
 试用：`node scripts/sample-project.mjs /tmp/demo` 生成一个带两个版本和一轮评论的示例项目。需要 Bun、git 和 ffmpeg。
 

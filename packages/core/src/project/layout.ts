@@ -1,6 +1,5 @@
-/** Where things live in a project folder. CLAUDE.md (claude-md.ts) documents the same layout. */
+/** Where things live in a project folder. The cutroom skill documents the same layout. */
 export const PATHS = {
-  instructions: "CLAUDE.md",
   gitignore: ".gitignore",
   timeline: "timeline.json",
   assets: "assets.json",

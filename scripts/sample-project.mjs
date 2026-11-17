@@ -1,26 +1,19 @@
 #!/usr/bin/env node
 /**
  * Builds a small but real Cutroom project: generated source media, two rendered versions
- * committed as `v1:` and `v2:`, one finished review round with a plan and replies, and one of
+ * committed as `v1:` and `v2:`, one finished review round with replies, and one of
  * Claude Code's precheck findings on v2. Used by the service tests and to try the app by hand.
  *
  * Usage: node scripts/sample-project.mjs <empty-or-missing-dir>
  * Needs ffmpeg and git on PATH.
  */
 import { execFileSync } from "node:child_process"
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
 
 const out = resolve(process.argv[2] ?? "")
 if (!process.argv[2]) throw new Error("usage: node scripts/sample-project.mjs <dir>")
 if (existsSync(out) && readdirSync(out).length > 0) throw new Error(`${out} is not empty`)
-
-const here = dirname(fileURLToPath(import.meta.url))
-const instructions = readFileSync(
-  join(here, "../packages/core/src/project/project-claude.md"),
-  "utf8"
-)
 
 const ff = (...args) => execFileSync("ffmpeg", ["-v", "error", "-y", ...args], { cwd: out })
 const git = (...args) =>
@@ -238,7 +231,6 @@ function render(version, clips, duration) {
   )
 }
 
-write("CLAUDE.md", instructions)
 write(".gitignore", "media/\nrenders/\n.DS_Store\n")
 write("assets.json", assets)
 
@@ -254,7 +246,7 @@ git("init", "-q", "-b", "main")
 git("add", "-A")
 git("commit", "-q", "-m", "v1: 三个镜头按顺序接上，配安静的音乐")
 
-// Round v1: two comments, a plan, an approval, then the work.
+// Round v1: two comments sent, then the work and the replies.
 write("review/comments.json", {
   comments: [
     {
@@ -286,13 +278,7 @@ write("review/comments.json", {
       createdAt: "2026-11-17T09:01:00.000Z",
     },
   ],
-  rounds: [
-    {
-      version: "v1",
-      submittedAt: "2026-11-17T09:02:00.000Z",
-      decision: { revision: 1, status: "approved", objections: {}, at: "2026-11-17T09:05:00.000Z" },
-    },
-  ],
+  rounds: [{ version: "v1", submittedAt: "2026-11-17T09:02:00.000Z" }],
   dismissed: [],
 })
 
@@ -328,15 +314,6 @@ write("review/agent.json", {
   rounds: [
     {
       version: "v1",
-      revision: 1,
-      plan: [
-        {
-          comment: "c-01",
-          action: "彩条从 5 秒裁到 2.5 秒，后面的分形和字幕前移",
-          willChange: true,
-        },
-        { comment: "c-02", action: "在开场和彩条之间加 0.6 秒叠化", willChange: true },
-      ],
       replies: [
         { comment: "c-01", text: "裁到 2.5 秒，分形镜头前移到 6.5 秒", done: true },
         { comment: "c-02", text: "加了 0.6 秒叠化", done: true },

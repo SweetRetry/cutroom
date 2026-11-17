@@ -1,9 +1,6 @@
-import { Button } from "@workspace/ui/components/button"
 import { useEffect } from "react"
-import { toast } from "sonner"
 
-import { api, unwrap } from "@/lib/api"
-import { useProjectEvents, useProjectPath, useRefresh } from "@/lib/project/hooks"
+import { useProjectEvents } from "@/lib/project/hooks"
 import { useSession, type Session } from "@/lib/review/session"
 import { useReviewUi } from "@/lib/review/ui-store"
 import { Stage } from "../player/stage"
@@ -24,8 +21,8 @@ export function Workspace() {
       <Header session={session} className="lg:col-span-3" />
       {session.error ? (
         <Problem error={session.error} />
-      ) : session.loading ? null : !session.files?.initialized || !session.current ? (
-        <FirstRun session={session} />
+      ) : session.loading ? null : !session.current ? (
+        <FirstRun />
       ) : (
         <>
           <Stage session={session} className="lg:col-start-2 lg:row-start-2" />
@@ -48,54 +45,20 @@ function Problem({ error }: { error: Error }) {
   )
 }
 
-/** A folder without conventions, or a project Claude Code hasn't cut yet. */
-function FirstRun({ session }: { session: Session }) {
-  const p = useProjectPath()
-  const refresh = useRefresh()
-  const initialized = !!session.files?.initialized && session.hasRepo
-
-  const init = async () => {
-    try {
-      await unwrap(api.init.post({ p }))
-      await refresh()
-      toast.success("已写入 CLAUDE.md、.gitignore 和 review/，并初始化 git")
-    } catch (error) {
-      toast.error("没能初始化", { description: error instanceof Error ? error.message : undefined })
-    }
-  }
-
+/** A folder Claude Code hasn't cut yet. The first `cutroom review` it runs fills this page. */
+function FirstRun() {
   return (
     <main className="flex flex-col gap-8 px-6 py-12 lg:col-span-3">
       <div className="flex max-w-2xl flex-col gap-2">
-        <h2 className="text-xl font-semibold">
-          {initialized ? "还没有第一版" : "这个文件夹还没有项目约定"}
-        </h2>
+        <h2 className="text-xl font-semibold">还没有第一版</h2>
         <p className="text-muted-foreground">
-          {initialized
-            ? "版本来自 git 里以 v1:、v2: 开头的提交，出了第一版这里会自动刷新。"
-            : "写入 CLAUDE.md 并初始化 git。剪辑的一方读它就知道怎么通过 Cutroom 交付版本。已有的文件不会被覆盖。"}
+          在 Claude Code 里告诉它素材在哪、想要什么样的片子。它剪出第一版后会运行 cutroom
+          review，这里会自动刷新。
         </p>
       </div>
-      {initialized ? (
-        <ol className="flex max-w-2xl list-decimal flex-col gap-2 pl-5 text-muted-foreground">
-          <li>把视频、图片和要用的音乐放进 media/user/。</li>
-          <li>
-            连上 Cutroom 的 MCP（只需一次）：
-            <code className="ml-1 font-mono text-xs text-foreground">{MCP_ADD}</code>
-          </li>
-          <li>在这个文件夹里开始剪辑，用一两句话说想要什么样的成片。</li>
-          <li>它渲染并提交 v1 后，这里会自动刷新。</li>
-        </ol>
-      ) : (
-        <Button className="self-start" onClick={() => void init()}>
-          写入项目约定
-        </Button>
-      )}
     </main>
   )
 }
-
-const MCP_ADD = `claude mcp add --scope user --transport http cutroom ${window.location.origin}/mcp`
 
 const typing = (target: EventTarget | null) =>
   target instanceof HTMLElement &&

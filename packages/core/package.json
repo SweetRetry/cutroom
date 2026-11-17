@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./*": "./src/*.ts",
-    "./project/project-claude.md": "./src/project/project-claude.md"
+    "./*": "./src/*.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

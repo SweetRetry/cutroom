@@ -5,7 +5,7 @@
 ```text
 docs/
   architecture.md   the stack, the decisions behind it, and where code lives
-  (the project folder format is packages/core/src/project/project-claude.md, the CLAUDE.md each project gets)
+  (the project folder format and Claude Code's workflow are in skills/cutroom/)
   deployment.md     running the service and the page, connecting the editing side
   guardrails.md     the hooks, lint and scans that check an agent's work, and what to do when one fails
   future/           plans not decided yet, each with the signal that would trigger it

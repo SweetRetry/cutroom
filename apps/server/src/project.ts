@@ -15,7 +15,6 @@ import {
 } from "@workspace/core/schema"
 
 import { git, readAt, readVersions, uncommitted, type Version } from "./git"
-import CLAUDE_MD from "@workspace/core/project/project-claude.md" with { type: "text" }
 
 /** A mistake the caller can fix: a bad path, a wrong phase, a broken file. Sent back as is. */
 export class ProjectError extends Error {}
@@ -27,7 +26,6 @@ export type Working = {
   comments: CommentsFile
   agent: AgentFile
   assets: AssetIndex
-  initialized: boolean
 }
 
 /**
@@ -37,6 +35,13 @@ export type Working = {
  */
 export class Project {
   private queue: Promise<unknown> = Promise.resolve()
+  /** When `cutroom review` last asked whether the comments were sent. In memory only. */
+  lastWait = 0
+
+  /** Whether the editing side is blocked in `cutroom review` right now. */
+  get listening() {
+    return Date.now() - this.lastWait < 5000
+  }
 
   constructor(readonly root: string) {}
 
@@ -89,17 +94,15 @@ export class Project {
   }
 
   async working(): Promise<Working> {
-    const [comments, agent, assets, initialized] = await Promise.all([
+    const [comments, agent, assets] = await Promise.all([
       this.readJson(PATHS.comments, commentsFileSchema),
       this.readJson(PATHS.agent, agentFileSchema),
       this.readJson(PATHS.assets, assetIndexSchema),
-      this.exists(PATHS.instructions),
     ])
     return {
       comments: comments ?? EMPTY_COMMENTS,
       agent: agent ?? EMPTY_AGENT,
       assets: assets ?? { assets: [] },
-      initialized,
     }
   }
 
@@ -147,11 +150,9 @@ export class Project {
     })
   }
 
-  /** Writes the conventions without touching anything that exists, and starts the repository. */
+  /** Lays out the folder without touching anything that exists, and starts the repository. */
   init() {
     return this.write(async () => {
-      if (!(await this.exists(PATHS.instructions)))
-        await this.putFile(PATHS.instructions, CLAUDE_MD)
       if (!(await this.exists(PATHS.gitignore))) await this.putFile(PATHS.gitignore, GITIGNORE)
       if (!(await this.exists(PATHS.comments))) await this.putJson(PATHS.comments, EMPTY_COMMENTS)
       await mkdir(this.path("media/user"), { recursive: true })

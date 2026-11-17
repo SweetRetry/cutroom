@@ -1,30 +1,40 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 
 import { Elysia } from "elysia"
 import { z } from "zod"
 
-import { anchorSchema, INTENTS } from "@workspace/core/schema"
+import { anchorSchema, INTENTS, replySchema } from "@workspace/core/schema"
 
-import { eventStream } from "./events"
-import { handleMcp } from "./mcp"
+import { handoff, sent } from "./agent"
+import { eventStream, pageOpen } from "./events"
 import { peaks, serveFile, thumbnail } from "./media"
 import { projectAt, ProjectError } from "./project"
-import { addComment, decide, deleteDraft, dismissFinding, resolve, submitRound } from "./review"
+import { addComment, deleteDraft, dismissFinding, resolve, send } from "./review"
 
 /**
- * The local service. Only this process writes a project folder: the page goes through `/api`,
- * Claude Code through `/mcp`. It listens on loopback and refuses other Host headers, so a web
+ * The local service. Only this process writes the review files and versions: the page and the
+ * `cutroom` command both go through `/api`. It listens on loopback and refuses other Host headers, so a web
  * page elsewhere can't reach it through DNS rebinding.
  */
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"])
 const RECENT = join(homedir(), ".cutroom", "recent.json")
 
+/** Recently opened folders that still exist; a deleted one (a test's temp dir) drops out. */
 async function recent(): Promise<string[]> {
   try {
-    return z.array(z.string()).parse(JSON.parse(await readFile(RECENT, "utf8")))
+    const list = z.array(z.string()).parse(JSON.parse(await readFile(RECENT, "utf8")))
+    const alive = await Promise.all(
+      list.map((p) =>
+        stat(p).then(
+          () => true,
+          () => false
+        )
+      )
+    )
+    return list.filter((_, i) => alive[i])
   } catch {
     return []
   }
@@ -54,7 +64,13 @@ const api = new Elysia({ prefix: "/api" })
     async ({ query }) => {
       const project = await projectAt(query.p)
       const [graph, working] = await Promise.all([project.versions(), project.working()])
-      return { name: project.name, path: project.root, graph, ...working }
+      return {
+        name: project.name,
+        path: project.root,
+        graph,
+        listening: project.listening,
+        ...working,
+      }
     },
     { query: p }
   )
@@ -66,7 +82,6 @@ const api = new Elysia({ prefix: "/api" })
     },
     { query: z.object({ p: z.string(), oid: z.string().regex(/^[0-9a-f]{7,40}$/) }) }
   )
-  .post("/init", async ({ body }) => (await projectAt(body.p)).init(), { body: p })
   .post(
     "/comments",
     async ({ body }) => {
@@ -96,20 +111,32 @@ const api = new Elysia({ prefix: "/api" })
     async ({ params, body }) => resolve(await projectAt(body.p), params.id, body.resolution),
     { body: z.object({ p: z.string(), resolution: z.enum(["closed", "reopened"]) }) }
   )
+  .post("/round/send", async ({ body }) => send(await projectAt(body.p)), { body: p })
+  // The `cutroom` command's two calls: hand over a version, then poll until it's reviewed.
   .post(
-    "/round/submit",
-    async ({ body }) => ({ count: await submitRound(await projectAt(body.p)) }),
-    { body: p }
-  )
-  .post(
-    "/round/decision",
-    async ({ body }) => ({ status: await decide(await projectAt(body.p), body) }),
+    "/handoff",
+    async ({ body }) => {
+      const { p, ...input } = body
+      const project = await projectAt(p)
+      await remember(project.root)
+      return { ...(await handoff(project, input)), pageOpen: pageOpen(project) }
+    },
     {
       body: z.object({
         p: z.string(),
-        revision: z.number().int(),
-        objections: z.record(z.string(), z.string()),
+        summary: z.string().optional(),
+        replies: z.array(replySchema).optional(),
+        findings: z
+          .array(z.object({ kind: z.string(), text: z.string(), anchor: anchorSchema }))
+          .optional(),
       }),
+    }
+  )
+  .get(
+    "/round/sent",
+    async ({ query }) => ({ result: await sent(await projectAt(query.p), query.version) }),
+    {
+      query: z.object({ p: z.string(), version: z.string() }),
     }
   )
   .post(
@@ -174,7 +201,6 @@ export const app = new Elysia()
     if (code === "VALIDATION") return Response.json({ message: "请求格式不对" }, { status: 400 })
   })
   .use(api)
-  .all("/mcp", ({ request }) => handleMcp(request))
 
 export type App = typeof app
 export type { Version, VersionGraph } from "./git"

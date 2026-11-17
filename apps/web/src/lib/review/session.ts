@@ -1,5 +1,5 @@
 import { useNavigate, useSearch } from "@tanstack/react-router"
-import { commentView, roundPhase, unplanned, type CommentView } from "@workspace/core/review/state"
+import { commentView, roundPhase, type CommentView } from "@workspace/core/review/state"
 import { diffTimelines } from "@workspace/core/timeline/diff"
 import { useMemo } from "react"
 import type { Version } from "server/app"
@@ -46,7 +46,6 @@ export function useSession() {
     return {
       phase: roundPhase(viewing.name, comments, agent),
       comments: views(viewing.name),
-      unplanned: unplanned(viewing.name, comments, agent),
       findings: agent.findings.filter(
         (f) => f.version === viewing.name && !comments.dismissed.includes(f.id)
       ),

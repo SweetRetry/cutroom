@@ -9,7 +9,7 @@ import { ProjectError, type Project } from "./project"
 
 /**
  * What the reviewer can do. Each action checks the round's phase here, on the writer, so a
- * stale browser tab can't add to a round Claude Code is already planning.
+ * stale browser tab can't add to a round already sent to the editing side.
  */
 
 /** The version under review, its timeline and the review files, or an error naming why not. */
@@ -25,7 +25,7 @@ async function currentRound(project: Project) {
 
 async function drafting(project: Project) {
   const round = await currentRound(project)
-  if (round.phase.kind !== "drafting") throw new ProjectError("本轮已提交，等下一版再写评论")
+  if (round.phase.kind !== "drafting") throw new ProjectError("本轮已发出，等下一版再写评论")
   return round
 }
 
@@ -104,7 +104,8 @@ export async function resolve(project: Project, id: string, resolution: "closed"
   })
 }
 
-export async function submitRound(project: Project) {
+/** Sends the round's comments to the editing side; `cutroom review` is waiting for this. */
+export async function send(project: Project) {
   const { version, working } = await drafting(project)
   const drafts = working.comments.comments.filter((c) => c.version === version.name)
   if (drafts.length === 0) throw new ProjectError("本轮还没有评论")
@@ -112,31 +113,7 @@ export async function submitRound(project: Project) {
     ...file,
     rounds: [...file.rounds, { version: version.name, submittedAt: new Date().toISOString() }],
   }))
-  return drafts.length
-}
-
-export async function decide(
-  project: Project,
-  { revision, objections }: { revision: number; objections: Record<string, string> }
-) {
-  const { version, phase } = await currentRound(project)
-  if (phase.kind !== "plan-ready") throw new ProjectError("现在没有待确认的计划")
-  // The page shows one revision; Claude Code may have rewritten the plan since.
-  if (phase.revision !== revision) throw new ProjectError("计划刚更新过，看一下新的这一稿")
-  const written = Object.fromEntries(Object.entries(objections).filter(([, v]) => v.trim()))
-  const status = Object.keys(written).length > 0 ? ("objected" as const) : ("approved" as const)
-  await project.updateComments((file) => ({
-    ...file,
-    rounds: file.rounds.map((r) =>
-      r.version === version.name
-        ? {
-            ...r,
-            decision: { revision, status, objections: written, at: new Date().toISOString() },
-          }
-        : r
-    ),
-  }))
-  return status
+  return { count: drafts.length, listening: project.listening }
 }
 
 export async function dismissFinding(project: Project, id: string) {

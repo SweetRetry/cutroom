@@ -11,8 +11,8 @@ import { anchorSpan } from "@workspace/core/timeline/query"
 import { StatusDot } from "./status"
 
 /**
- * One comment with everything Claude Code said about it: the plan for it and, after the round,
- * what was actually done. `children` carries the actions that fit the round's phase.
+ * One comment with what Claude Code replied after the round: what it did, or why not.
+ * `children` carries the actions that fit the round's phase.
  */
 export function CommentItem({
   view,
@@ -23,7 +23,7 @@ export function CommentItem({
   session: Session
   children?: ReactNode
 }) {
-  const { comment, plan, reply, status } = view
+  const { comment, reply, status } = view
   const assets = useAssets()
   const focused = useReviewUi((s) => s.focused === comment.id)
   const place = describeAnchor(comment.anchor, session.timeline, assets)
@@ -53,8 +53,6 @@ export function CommentItem({
         <span>{comment.text}</span>
       </button>
 
-      {/* Once there is a reply, it supersedes the plan. */}
-      {plan && !reply && <Answer state={plan.willChange ? "will" : "wont"}>{plan.action}</Answer>}
       {reply && <Answer state={reply.done ? "done" : "skipped"}>{reply.text}</Answer>}
       {children}
     </li>
@@ -62,12 +60,10 @@ export function CommentItem({
 }
 
 /**
- * What the editing side says about one comment, threaded under it: whether it was (or will be)
- * changed, then how, or why not. A reply supersedes the plan, so only one is ever shown.
+ * Claude Code's reply to one comment, threaded under it: whether it changed it, then how, or
+ * why not.
  */
 const ANSWER = {
-  will: { label: "计划改", tone: "bg-subtle-foreground" },
-  wont: { label: "计划不改", tone: "bg-warning" },
   done: { label: "已改", tone: "bg-primary" },
   skipped: { label: "没改", tone: "bg-warning" },
 } as const

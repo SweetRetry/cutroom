@@ -16,12 +16,7 @@ function classify(rel: string): ChangeKind | undefined {
       : undefined
   }
   if (rel.startsWith("renders/") || rel.startsWith("media/")) return "media"
-  if (
-    rel.startsWith("review/") ||
-    rel === "assets.json" ||
-    rel === "timeline.json" ||
-    rel === "CLAUDE.md"
-  ) {
+  if (rel.startsWith("review/") || rel === "assets.json" || rel === "timeline.json") {
     return "working"
   }
   return undefined
@@ -57,6 +52,16 @@ function subscribe(project: Project, listener: (kind: ChangeKind) => void) {
       watches.delete(project.root)
     }
   }
+}
+
+/** Whether a page is watching this project, so `cutroom review` needn't open another tab. */
+export function pageOpen(project: Project) {
+  return watches.has(project.root)
+}
+
+/** Tells open pages about a change that isn't a file, such as the editing side starting to wait. */
+export function notify(project: Project, kind: ChangeKind) {
+  for (const l of watches.get(project.root)?.listeners ?? []) l(kind)
 }
 
 export function eventStream(project: Project, signal: AbortSignal): Response {
