@@ -1,0 +1,38 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": ["docs/rules/**", ".agents/skills/**"],
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/sample-project.mjs"],
+      "ignoreDependencies": ["vite"]
+    },
+    "apps/web": {
+      "entry": ["src/main.tsx"],
+      "project": ["src/**/*.{ts,tsx,css}", "*.ts"],
+      "ignoreDependencies": ["tailwindcss"],
+      "vite": false
+    },
+    "packages/ui": {
+      "entry": [
+        "src/components/**/*.tsx",
+        "src/lib/**/*.ts",
+        "src/hooks/**/*.ts",
+        "src/styles/*.css"
+      ],
+      "project": ["src/**/*.{ts,tsx,css}"]
+    },
+    "packages/typescript-config": {
+      "entry": [],
+      "project": []
+    },
+    "apps/server": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/core": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    }
+  },
+  "ignoreBinaries": ["ffmpeg"]
+}

@@ -1,0 +1,309 @@
+import { Button } from "@workspace/ui/components/button"
+import { ScrollArea } from "@workspace/ui/components/scroll-area"
+import { Textarea } from "@workspace/ui/components/textarea"
+import { cn } from "@workspace/ui/lib/utils"
+import { useState, type ReactNode } from "react"
+import { toast } from "sonner"
+
+import { api, unwrap } from "@/lib/api"
+import { useAction, useProjectPath } from "@/lib/project/hooks"
+import type { Finding } from "@workspace/core/schema"
+import type { Session } from "@/lib/review/session"
+import type { CommentView } from "@workspace/core/review/state"
+import { useReviewUi } from "@/lib/review/ui-store"
+import { useAddComment } from "@/lib/review/use-add-comment"
+import { anchorSpan, formatTime } from "@workspace/core/timeline/query"
+import { ChangeList } from "./changes"
+import { CommentItem } from "./comment-item"
+import { Composer } from "./composer"
+
+export function ReviewPanel({ session, className }: { session: Session; className?: string }) {
+  const { phase, comments = [], previous, findings = [], editable } = session
+  const drafting = editable && phase?.kind === "drafting"
+  const deciding = editable && phase?.kind === "plan-ready"
+  const confirmed = new Set(comments.map((c) => c.comment.finding).filter(Boolean))
+  const open = findings.filter((f) => !confirmed.has(f.id))
+  const verdicts =
+    previous?.comments.filter((c) => c.status === "replied" || c.status === "missed") ?? []
+
+  return (
+    <aside className={cn("flex min-h-0 flex-col lg:bg-sidebar", className)}>
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-8 px-4 pt-4 pb-8">
+          <ChangeList session={session} />
+          {deciding ? (
+            <PlanDecision session={session} />
+          ) : (
+            <Section
+              title={`${session.viewing?.name ?? ""} 的评论`}
+              empty={`${session.viewing?.name ?? ""} 还没有评论。`}
+            >
+              {comments.map((view) => (
+                <CommentItem key={view.comment.id} view={view} session={session}>
+                  {view.status === "draft" && <DeleteDraft id={view.comment.id} />}
+                </CommentItem>
+              ))}
+            </Section>
+          )}
+
+          {drafting && open.length > 0 && (
+            <Section title="预检发现">
+              {open.map((f) => (
+                <FindingItem key={f.id} finding={f} session={session} />
+              ))}
+            </Section>
+          )}
+
+          {verdicts.length > 0 && (
+            <Section title={`${previous!.version} 的回复，确认是否改好了`}>
+              {verdicts.map((view) => (
+                <CommentItem key={view.comment.id} view={view} session={session}>
+                  <Verdict view={view} session={session} />
+                </CommentItem>
+              ))}
+            </Section>
+          )}
+        </div>
+      </ScrollArea>
+      {/* The bottom slot: the comment box while the round is open, otherwise why it is closed. */}
+      {drafting && <Composer session={session} />}
+      {!editable && session.current && (
+        <p className="border-t p-4 text-muted-foreground">
+          只读。评论只能写在当前版本 {session.current.name} 上。
+        </p>
+      )}
+      {editable && phase && !drafting && !deciding && (
+        <p className="border-t p-4 text-muted-foreground">
+          本轮已提交。下一版出来后，在新版本上继续评论。
+        </p>
+      )}
+    </aside>
+  )
+}
+
+function Section({
+  title,
+  empty,
+  children,
+}: {
+  title: string
+  empty?: string
+  children: ReactNode[] | ReactNode
+}) {
+  const hasItems = Array.isArray(children) ? children.length > 0 : !!children
+  // An empty section is one sentence that names the space itself; a title above it would repeat it.
+  if (!hasItems) return <p className="text-muted-foreground">{empty}</p>
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+      <ul className="flex flex-col gap-2">{children}</ul>
+    </section>
+  )
+}
+
+function DeleteDraft({ id }: { id: string }) {
+  const p = useProjectPath()
+  const act = useAction()
+  return (
+    <Button
+      variant="ghost"
+      size="xs"
+      className="-ml-2 self-start"
+      onClick={() =>
+        void act(() => unwrap(api.comments({ id }).delete(undefined, { query: { p } })), "没能删除")
+      }
+    >
+      删除
+    </Button>
+  )
+}
+
+/** The plan is shown per comment; an objection is written next to the item it is about. */
+function PlanDecision({ session }: { session: Session }) {
+  const p = useProjectPath()
+  const act = useAction()
+  const [objections, setObjections] = useState<Record<string, string>>({})
+  const [objecting, setObjecting] = useState<Set<string>>(new Set())
+  const revision = session.phase?.kind === "plan-ready" ? session.phase.revision : 0
+  const written = Object.fromEntries(Object.entries(objections).filter(([, v]) => v.trim()))
+  const objected = Object.keys(written).length > 0
+
+  const decide = async () => {
+    const done = await act(
+      () => unwrap(api.round.decision.post({ p, revision, objections: written })),
+      "没能提交决定"
+    )
+    if (!done) return
+    toast.success(objected ? "异议已提交" : "计划已通过", {
+      description: objected ? "计划会按异议改写，改好后再来确认。" : "接下来按计划执行，出新版本。",
+    })
+  }
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h3 className="text-xs font-medium text-muted-foreground">
+        计划{revision > 1 ? `（第 ${revision} 稿）` : ""}
+      </h3>
+      {session.unplanned && session.unplanned.length > 0 && (
+        <p className="rounded-md bg-warning-soft px-2 py-1 text-xs text-warning">
+          计划没有提到 {session.unplanned.join("、")}。可以提出异议让它补上。
+        </p>
+      )}
+      <ul className="flex flex-col gap-2">
+        {(session.comments ?? []).map((view) => {
+          const id = view.comment.id
+          return (
+            <CommentItem key={id} view={view} session={session}>
+              {objecting.has(id) ? (
+                <Textarea
+                  autoFocus
+                  rows={2}
+                  placeholder="哪里不同意，想怎么改"
+                  value={objections[id] ?? ""}
+                  onChange={(e) => setObjections({ ...objections, [id]: e.target.value })}
+                />
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className="-ml-2 self-start"
+                  onClick={() => setObjecting(new Set(objecting).add(id))}
+                >
+                  提出异议
+                </Button>
+              )}
+            </CommentItem>
+          )
+        })}
+      </ul>
+      <Button className="self-start" onClick={() => void decide()}>
+        {objected ? `提交异议 ${Object.keys(written).length} 条` : "通过计划"}
+      </Button>
+    </section>
+  )
+}
+
+function FindingItem({ finding, session }: { finding: Finding; session: Session }) {
+  const p = useProjectPath()
+  const act = useAction()
+  const add = useAddComment()
+  const span = session.timeline && anchorSpan(finding.anchor, session.timeline)
+  const focused = useReviewUi((s) => s.focused === finding.id)
+
+  return (
+    <li
+      className={cn(
+        "-mx-2 flex flex-col gap-2 rounded-md px-2 py-2 transition-colors",
+        focused && "bg-surface-2"
+      )}
+    >
+      <button
+        type="button"
+        className="flex flex-col gap-1 text-left"
+        onClick={() => {
+          useReviewUi.getState().focus(finding.id)
+          if (span) useReviewUi.getState().seek(span.start)
+        }}
+      >
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{finding.kind}</span>
+          {span && <span className="tabular-nums">{formatTime(span.start)}</span>}
+        </span>
+        <span>{finding.text}</span>
+      </button>
+      <div className="flex gap-2">
+        <Button
+          variant="secondary"
+          size="xs"
+          onClick={() =>
+            void act(
+              () =>
+                add({
+                  intent: "issue",
+                  text: finding.text,
+                  anchor: finding.anchor,
+                  finding: finding.id,
+                }),
+              "没能记成评论"
+            )
+          }
+        >
+          确实是问题
+        </Button>
+        <Button
+          variant="ghost"
+          size="xs"
+          onClick={() =>
+            void act(() => unwrap(api.findings({ id: finding.id }).dismiss.post({ p })), "没能标记")
+          }
+        >
+          没关系
+        </Button>
+      </div>
+    </li>
+  )
+}
+
+/**
+ * Closing accepts the reply. Reopening says why it isn't right yet and becomes a new comment in
+ * the current round, at the same place, linked to the old one.
+ */
+function Verdict({ view, session }: { view: CommentView; session: Session }) {
+  const p = useProjectPath()
+  const act = useAction()
+  const add = useAddComment()
+  const [reopening, setReopening] = useState(false)
+  const [text, setText] = useState("")
+  const id = view.comment.id
+  const canReopen = session.phase?.kind === "drafting"
+
+  const resolve = (resolution: "closed" | "reopened") =>
+    act(() => unwrap(api.comments({ id }).resolution.post({ p, resolution })), "没能记下")
+
+  const reopen = () =>
+    act(async () => {
+      if (!text.trim()) return
+      // The follow-up comment first: a failed add must not leave the old one marked reopened.
+      await add({ intent: view.comment.intent, text, anchor: view.comment.anchor, reopens: id })
+      await unwrap(api.comments({ id }).resolution.post({ p, resolution: "reopened" }))
+    }, "没能重新打开")
+
+  if (reopening) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Textarea
+          autoFocus
+          rows={2}
+          value={text}
+          placeholder="还有哪里不对"
+          onChange={(e) => setText(e.target.value)}
+        />
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="xs"
+            disabled={!text.trim()}
+            onClick={() => void reopen()}
+          >
+            重新打开
+          </Button>
+          <Button variant="ghost" size="xs" onClick={() => setReopening(false)}>
+            取消
+          </Button>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="flex gap-2">
+      <Button variant="secondary" size="xs" onClick={() => void resolve("closed")}>
+        改好了
+      </Button>
+      {canReopen && (
+        <Button variant="ghost" size="xs" onClick={() => setReopening(true)}>
+          还不行
+        </Button>
+      )}
+    </div>
+  )
+}
