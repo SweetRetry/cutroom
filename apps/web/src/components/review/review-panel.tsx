@@ -27,16 +27,15 @@ export function ReviewPanel({ session, className }: { session: Session; classNam
     <aside className={cn("flex min-h-0 flex-col lg:bg-sidebar", className)}>
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-8 px-4 pt-4 pb-8">
-          <Section
-            title={`${session.viewing?.name ?? ""} 的评论`}
-            empty={`${session.viewing?.name ?? ""} 还没有评论。`}
-          >
-            {comments.map((view) => (
-              <CommentItem key={view.comment.id} view={view} session={session}>
-                {view.status === "draft" && <DeleteDraft id={view.comment.id} />}
-              </CommentItem>
-            ))}
-          </Section>
+          {verdicts.length > 0 && (
+            <Section title={`${previous!.version} 的回复`}>
+              {verdicts.map((view) => (
+                <CommentItem key={view.comment.id} view={view} session={session}>
+                  <Verdict view={view} session={session} />
+                </CommentItem>
+              ))}
+            </Section>
+          )}
 
           {drafting && open.length > 0 && (
             <Section title="预检发现">
@@ -46,22 +45,20 @@ export function ReviewPanel({ session, className }: { session: Session; classNam
             </Section>
           )}
 
-          {verdicts.length > 0 && (
-            <Section title={`${previous!.version} 的回复，确认是否改好了`}>
-              {verdicts.map((view) => (
-                <CommentItem key={view.comment.id} view={view} session={session}>
-                  <Verdict view={view} session={session} />
-                </CommentItem>
-              ))}
-            </Section>
-          )}
+          <Section title={`${session.viewing?.name ?? ""} 的评论`} empty="暂无评论">
+            {comments.map((view) => (
+              <CommentItem key={view.comment.id} view={view} session={session}>
+                {view.status === "draft" && <DeleteDraft id={view.comment.id} />}
+              </CommentItem>
+            ))}
+          </Section>
         </div>
       </ScrollArea>
       {/* The bottom slot: the comment box while the round is open. The header says when it's sent. */}
       {drafting && <Composer session={session} />}
       {!editable && session.current && (
         <p className="border-t p-4 text-muted-foreground">
-          只读。评论只能写在当前版本 {session.current.name} 上。
+          历史版本仅供查看，评论写在当前版本 {session.current.name} 上。
         </p>
       )}
     </aside>
@@ -78,12 +75,15 @@ function Section({
   children: ReactNode[] | ReactNode
 }) {
   const hasItems = Array.isArray(children) ? children.length > 0 : !!children
-  // An empty section is one sentence that names the space itself; a title above it would repeat it.
-  if (!hasItems) return <p className="text-muted-foreground">{empty}</p>
+  // An empty section keeps its title, so "暂无评论" can't be read as being about another section.
   return (
     <section className="flex flex-col gap-2">
       <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
-      <ul className="flex flex-col gap-2">{children}</ul>
+      {hasItems ? (
+        <ul className="flex flex-col gap-2">{children}</ul>
+      ) : (
+        <p className="text-muted-foreground">{empty}</p>
+      )}
     </section>
   )
 }
@@ -97,7 +97,7 @@ function DeleteDraft({ id }: { id: string }) {
       size="xs"
       className="-ml-2 self-start"
       onClick={() =>
-        void act(() => unwrap(api.comments({ id }).delete(undefined, { query: { p } })), "没能删除")
+        void act(() => unwrap(api.comments({ id }).delete(undefined, { query: { p } })), "删除失败")
       }
     >
       删除
@@ -145,20 +145,20 @@ function FindingItem({ finding, session }: { finding: Finding; session: Session 
                   anchor: finding.anchor,
                   finding: finding.id,
                 }),
-              "没能记成评论"
+              "转为评论失败"
             )
           }
         >
-          确实是问题
+          转为评论
         </Button>
         <Button
           variant="ghost"
           size="xs"
           onClick={() =>
-            void act(() => unwrap(api.findings({ id: finding.id }).dismiss.post({ p })), "没能标记")
+            void act(() => unwrap(api.findings({ id: finding.id }).dismiss.post({ p })), "忽略失败")
           }
         >
-          没关系
+          忽略
         </Button>
       </div>
     </li>
@@ -179,7 +179,7 @@ function Verdict({ view, session }: { view: CommentView; session: Session }) {
   const canReopen = session.phase?.kind === "drafting"
 
   const resolve = (resolution: "closed" | "reopened") =>
-    act(() => unwrap(api.comments({ id }).resolution.post({ p, resolution })), "没能记下")
+    act(() => unwrap(api.comments({ id }).resolution.post({ p, resolution })), "操作失败")
 
   const reopen = () =>
     act(async () => {
@@ -187,7 +187,7 @@ function Verdict({ view, session }: { view: CommentView; session: Session }) {
       // The follow-up comment first: a failed add must not leave the old one marked reopened.
       await add({ text, anchor: view.comment.anchor, reopens: id })
       await unwrap(api.comments({ id }).resolution.post({ p, resolution: "reopened" }))
-    }, "没能重新打开")
+    }, "重新打开失败")
 
   if (reopening) {
     return (
@@ -196,7 +196,7 @@ function Verdict({ view, session }: { view: CommentView; session: Session }) {
           autoFocus
           rows={2}
           value={text}
-          placeholder="还有哪里不对"
+          placeholder="说明还需要修改的地方"
           onChange={(e) => setText(e.target.value)}
         />
         <div className="flex gap-2">
@@ -218,11 +218,11 @@ function Verdict({ view, session }: { view: CommentView; session: Session }) {
   return (
     <div className="flex gap-2">
       <Button variant="secondary" size="xs" onClick={() => void resolve("closed")}>
-        改好了
+        标为已解决
       </Button>
       {canReopen && (
         <Button variant="ghost" size="xs" onClick={() => setReopening(true)}>
-          还不行
+          重新打开
         </Button>
       )}
     </div>

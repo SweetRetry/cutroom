@@ -36,7 +36,7 @@ export function Player({
         className="flex max-h-full w-full items-center justify-center rounded-md bg-surface-1 px-4 text-center text-muted-foreground"
         style={{ aspectRatio }}
       >
-        {path} 还没渲染出来
+        {path} 尚未渲染
       </div>
     )
   }
@@ -189,7 +189,7 @@ function RegionLayer({ box, session }: { box: DOMRect; session: Session }) {
     >
       {drawing && !draft && (
         <span className="absolute top-2 left-2 rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground">
-          拖动框出要评论的区域
+          拖动框选要评论的区域
         </span>
       )}
       {shown && (

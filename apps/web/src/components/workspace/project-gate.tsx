@@ -47,13 +47,13 @@ function OpenProject() {
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-semibold text-balance">Cutroom</h1>
           <p className="text-sm text-muted-foreground">
-            打开一个视频项目文件夹，看片、评论、确认计划、比较版本。
+            打开视频项目文件夹，审片、评论、对比版本。
           </p>
         </div>
 
         {recent.isError ? (
           <p className="text-sm text-muted-foreground">
-            连不上本地服务。在仓库里运行 pnpm dev，再刷新这个页面。
+            无法连接本地服务。在 Cutroom 仓库运行 pnpm dev 后刷新页面。
           </p>
         ) : (
           <>

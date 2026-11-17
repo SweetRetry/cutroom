@@ -37,7 +37,7 @@ export function Composer({ session }: { session: Session }) {
       setAnchor(null)
       useReviewUi.getState().focus(id)
     } catch (error) {
-      toast.error("评论没有保存", {
+      toast.error("评论保存失败", {
         description: error instanceof Error ? error.message : undefined,
       })
     } finally {
@@ -81,7 +81,7 @@ export function Composer({ session }: { session: Session }) {
       <Textarea
         ref={box}
         value={text}
-        placeholder={anchor ? "哪里不对，或者想要什么" : "评论全片，或先在时间轴上选个位置"}
+        placeholder={anchor ? "描述问题或想要的效果" : "评论全片，或在时间轴上选取位置"}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void send({ text })

@@ -72,8 +72,8 @@ export type AssetOrigin = (typeof ASSET_ORIGINS)[number]
 
 export const ASSET_ORIGIN_LABEL: Record<AssetOrigin, string> = {
   user: "导入",
-  fetched: "搜索获取",
-  generated: "代码创建",
+  fetched: "下载",
+  generated: "生成",
 }
 
 const asset = z.object({
@@ -106,7 +106,7 @@ export const ANCHOR_KIND_LABEL: Record<AnchorKind, string> = {
   clip: "片段",
   seam: "接缝",
   region: "画面区域",
-  track: "整条轨道",
+  track: "轨道",
   global: "全片",
 }
 
@@ -125,8 +125,6 @@ export const anchorSchema = z.object({
   clip: z.string().optional(),
   seam: z.tuple([z.string(), z.string()]).optional(),
   region: region.optional(),
-  /** A comment about an asset itself ("这首歌太吵"), from the asset list. */
-  asset: z.string().optional(),
 })
 export type Anchor = z.infer<typeof anchorSchema>
 
@@ -181,7 +179,7 @@ export type Round = z.infer<typeof round>
 export const commentsFileSchema = z.object({
   comments: z.array(comment).default([]),
   rounds: z.array(round).default([]),
-  /** Findings the reviewer marked "没关系". */
+  /** Findings the reviewer ignored. */
   dismissed: z.array(z.string()).default([]),
 })
 export type CommentsFile = z.infer<typeof commentsFileSchema>

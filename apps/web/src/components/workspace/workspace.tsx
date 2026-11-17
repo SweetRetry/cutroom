@@ -38,9 +38,9 @@ export function Workspace() {
 function Problem({ error }: { error: Error }) {
   return (
     <main className="flex flex-col gap-2 px-6 py-12 lg:col-span-3">
-      <h2 className="text-xl font-semibold">读不了这个项目</h2>
+      <h2 className="text-xl font-semibold">无法读取项目</h2>
       <p className="max-w-2xl text-muted-foreground">{error.message}</p>
-      <p className="max-w-2xl text-muted-foreground">修好之后页面会自动重新读取。</p>
+      <p className="max-w-2xl text-muted-foreground">修复后页面自动重新读取。</p>
     </main>
   )
 }
@@ -50,10 +50,9 @@ function FirstRun() {
   return (
     <main className="flex flex-col gap-8 px-6 py-12 lg:col-span-3">
       <div className="flex max-w-2xl flex-col gap-2">
-        <h2 className="text-xl font-semibold">还没有第一版</h2>
+        <h2 className="text-xl font-semibold">暂无版本</h2>
         <p className="text-muted-foreground">
-          在 Claude Code 里告诉它素材在哪、想要什么样的片子。它剪出第一版后会运行 cutroom
-          review，这里会自动刷新。
+          在 Claude Code 中说明素材位置和成片要求。第一版渲染后，此页自动刷新。
         </p>
       </div>
     </main>

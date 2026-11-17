@@ -4,9 +4,9 @@ import type { Clip, Timeline } from "../schema"
 export type ClipField = "track" | "time" | "source" | "content" | "beats"
 
 export const CLIP_FIELD_LABEL: Record<ClipField, string> = {
-  track: "换了轨道",
-  time: "位置或时长",
-  source: "素材或入出点",
+  track: "轨道",
+  time: "时间",
+  source: "素材与入出点",
   content: "内容",
   beats: "节拍点",
 }

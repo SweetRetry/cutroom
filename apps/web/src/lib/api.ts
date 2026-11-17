@@ -14,7 +14,7 @@ export async function unwrap<T>(
     const message =
       value && typeof value === "object" && "message" in value
         ? String(value.message)
-        : "本地服务没有响应"
+        : "本地服务无响应"
     throw new Error(message)
   }
   return data as NonNullable<T>

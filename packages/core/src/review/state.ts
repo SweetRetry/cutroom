@@ -23,11 +23,11 @@ export function roundPhase(version: string, comments: CommentsFile, agent: Agent
 export type CommentStatus = "draft" | "pending" | "replied" | "missed" | "closed" | "reopened"
 
 export const COMMENT_STATUS_LABEL: Record<CommentStatus, string> = {
-  draft: "未提交",
+  draft: "未发送",
   pending: "已发送",
-  replied: "已处理",
+  replied: "已回复",
   missed: "未回复",
-  closed: "已关闭",
+  closed: "已解决",
   reopened: "已重新打开",
 }
 

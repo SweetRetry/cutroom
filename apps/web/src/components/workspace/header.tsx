@@ -65,7 +65,7 @@ function RoundAction({ session, phase }: { session: Session; phase: RoundPhase }
     return (
       <span className="inline-flex items-center gap-2 text-muted-foreground">
         <span className="size-1.5 rounded-full bg-subtle-foreground" />
-        已发给 Claude Code，等新版本
+        已发送，等待新版本
       </span>
     )
   }
@@ -75,14 +75,14 @@ function RoundAction({ session, phase }: { session: Session; phase: RoundPhase }
     try {
       result = await unwrap(api.round.send.post({ p }))
     } catch (error) {
-      toast.error("没能发送", { description: error instanceof Error ? error.message : undefined })
+      toast.error("发送失败", { description: error instanceof Error ? error.message : undefined })
       return
     }
     await refresh()
     if (result.listening) toast.success(`已发给 Claude Code，${result.count} 条评论`)
     else
       toast.success(`已发送 ${result.count} 条评论`, {
-        description: `Claude Code 现在没在等。在对话里说“${PROMPT}”，它就会读到。`,
+        description: `Claude Code 未在等待。在对话中发送“${PROMPT}”即可读取。`,
         action: { label: "复制", onClick: () => void navigator.clipboard.writeText(PROMPT) },
         duration: 10000,
       })
@@ -93,7 +93,7 @@ function RoundAction({ session, phase }: { session: Session; phase: RoundPhase }
       {listening && (
         <span className="inline-flex items-center gap-2 text-muted-foreground">
           <span className="size-1.5 rounded-full bg-primary" />
-          Claude Code 在等
+          Claude Code 等待中
         </span>
       )}
       <Button disabled={drafts === 0} onClick={() => void send()}>

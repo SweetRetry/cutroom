@@ -26,7 +26,6 @@ export function describeAnchor(
     return hit ? clipLabel(hit.track, hit.clip, assets) : clipId
   }
 
-  if (anchor.asset) return { kind: "素材", detail: assets.get(anchor.asset)?.name ?? anchor.asset }
   switch (anchor.kind) {
     case "clip":
       return { kind, detail: `${name(anchor.clip!)} ${time}`.trim() }

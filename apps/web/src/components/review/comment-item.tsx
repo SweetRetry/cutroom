@@ -63,8 +63,8 @@ export function CommentItem({
  * why not.
  */
 const ANSWER = {
-  done: { label: "已改", tone: "bg-primary" },
-  skipped: { label: "没改", tone: "bg-warning" },
+  done: { label: "已修改", tone: "bg-primary" },
+  skipped: { label: "未修改", tone: "bg-warning" },
 } as const
 
 function Answer({ state, children }: { state: keyof typeof ANSWER; children: ReactNode }) {

@@ -20,8 +20,8 @@ export const CHANGE_TONE: Record<ClipChange["kind"], string> = {
 
 const CHANGE_LABEL: Record<ClipChange["kind"], string> = {
   added: "新增",
-  changed: "改动",
-  removed: "删掉",
+  changed: "修改",
+  removed: "删除",
 }
 
 /**
@@ -99,7 +99,7 @@ function ChangeList({ session, onPick }: { session: Session; onPick: () => void 
         ))}
       </h3>
       {diff.changes.length === 0 ? (
-        <p className="text-muted-foreground">两个版本的时间轴没有差别。</p>
+        <p className="text-muted-foreground">两个版本的时间轴相同</p>
       ) : (
         <ul className="flex flex-col gap-1">
           {diff.changes.map((change) => (

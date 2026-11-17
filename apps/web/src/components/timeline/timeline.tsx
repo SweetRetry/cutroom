@@ -73,9 +73,7 @@ export function Timeline({ session, className }: { session: Session; className?:
       <section
         className={cn("flex h-48 items-center border-t px-4 text-muted-foreground", className)}
       >
-        {session.timelinePending
-          ? null
-          : `${viewing?.name ?? "这个版本"} 的提交里没有 timeline.json`}
+        {session.timelinePending ? null : `${viewing?.name ?? "这个版本"} 缺少 timeline.json`}
       </section>
     )
   }
@@ -129,7 +127,7 @@ export function Timeline({ session, className }: { session: Session; className?:
       <div ref={scroller} className="flex min-h-0 flex-1 overflow-auto">
         <div className="sticky left-0 z-20 flex w-24 shrink-0 flex-col bg-background sm:w-32">
           <ZoomControls className={cn(ROW.ruler, "sticky top-0 z-10 shrink-0 bg-background")} />
-          {marked && <RowHeader className={ROW.notes} label="标注" />}
+          {marked && <RowHeader className={ROW.notes} label="评论" />}
           {tracks.map(({ track, lanes, lanePx }) => (
             <RowHeader
               key={track.id}

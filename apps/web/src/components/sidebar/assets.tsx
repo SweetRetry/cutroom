@@ -1,47 +1,44 @@
-import { Button } from "@workspace/ui/components/button"
 import { ASSET_ORIGINS, ASSET_ORIGIN_LABEL, type Asset } from "@workspace/core/schema"
 
 import { mediaUrl, thumbUrl } from "@/lib/api"
 import { useProjectData, useProjectPath } from "@/lib/project/hooks"
 import type { Session } from "@/lib/review/session"
-import { useReviewUi } from "@/lib/review/ui-store"
 
 /**
- * Every asset, whoever brought it in. Claude Code indexes them; a fetched one shows where it
- * came from and its license. "评论" attaches the next comment to the asset itself.
+ * Every asset, whoever brought it in, for reference while reviewing. Claude Code indexes them;
+ * a downloaded one links its license. Origins get headings only when there is more than one.
  */
 export function AssetList({ session }: { session: Session }) {
   const { data } = useProjectData()
   const assets = data?.assets.assets ?? []
   const used = new Set(session.timeline?.tracks.flatMap((t) => t.clips.map((c) => c.asset)) ?? [])
+  const origins = ASSET_ORIGINS.filter((o) => assets.some((a) => a.origin === o))
 
-  if (assets.length === 0) {
-    return <p className="px-4 text-muted-foreground">还没有素材索引。</p>
-  }
+  if (assets.length === 0) return <p className="px-4 text-muted-foreground">暂无素材</p>
 
   return (
     <div className="flex flex-col gap-6 px-4 pb-4">
-      {ASSET_ORIGINS.map((origin) => {
-        const group = assets.filter((a) => a.origin === origin)
-        if (group.length === 0) return null
-        return (
-          <section key={origin} className="flex flex-col gap-2">
+      {origins.map((origin) => (
+        <section key={origin} className="flex flex-col gap-2">
+          {origins.length > 1 && (
             <h3 className="text-xs font-medium text-muted-foreground">
               {ASSET_ORIGIN_LABEL[origin]}
             </h3>
-            <ul className="flex flex-col gap-2">
-              {group.map((a) => (
-                <AssetRow key={a.id} asset={a} used={used.has(a.id)} editable={session.editable} />
+          )}
+          <ul className="flex flex-col gap-3">
+            {assets
+              .filter((a) => a.origin === origin)
+              .map((a) => (
+                <AssetRow key={a.id} asset={a} used={used.has(a.id)} />
               ))}
-            </ul>
-          </section>
-        )
-      })}
+          </ul>
+        </section>
+      ))}
     </div>
   )
 }
 
-function AssetRow({ asset, used, editable }: { asset: Asset; used: boolean; editable: boolean }) {
+function AssetRow({ asset, used }: { asset: Asset; used: boolean }) {
   const p = useProjectPath()
   const thumb =
     asset.kind === "image" || asset.kind === "sticker"
@@ -51,7 +48,7 @@ function AssetRow({ asset, used, editable }: { asset: Asset; used: boolean; edit
         : undefined
 
   return (
-    <li className="group flex gap-2">
+    <li className="flex gap-2">
       <div className="flex h-9 w-16 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-surface-2 text-xs text-subtle-foreground">
         {thumb ? (
           <img src={thumb} alt="" loading="lazy" className="size-full object-cover" />
@@ -59,7 +56,7 @@ function AssetRow({ asset, used, editable }: { asset: Asset; used: boolean; edit
           asset.kind
         )}
       </div>
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-baseline gap-2">
           <span className="truncate">{asset.name ?? asset.path.split("/").pop()}</span>
           {asset.duration !== undefined && (
@@ -68,9 +65,12 @@ function AssetRow({ asset, used, editable }: { asset: Asset; used: boolean; edit
             </span>
           )}
         </span>
-        {asset.summary && (
-          <span className="line-clamp-2 text-xs text-muted-foreground">{asset.summary}</span>
-        )}
+        <span className="flex items-baseline gap-2 text-xs">
+          <span className="truncate text-muted-foreground" title={asset.summary}>
+            {asset.summary}
+          </span>
+          {!used && <span className="ml-auto shrink-0 text-subtle-foreground">未使用</span>}
+        </span>
         {asset.source && (
           <a
             href={asset.source.url}
@@ -81,22 +81,6 @@ function AssetRow({ asset, used, editable }: { asset: Asset; used: boolean; edit
             {asset.source.license}
           </a>
         )}
-        <span className="flex items-center gap-2 text-xs text-subtle-foreground">
-          {asset.group && <span>{asset.group}</span>}
-          {!used && <span>未使用</span>}
-          {editable && (
-            <Button
-              variant="ghost"
-              size="xs"
-              className="ml-auto"
-              onClick={() =>
-                useReviewUi.getState().setAnchor({ kind: "global", asset: asset.id }, true)
-              }
-            >
-              评论
-            </Button>
-          )}
-        </span>
       </div>
     </li>
   )

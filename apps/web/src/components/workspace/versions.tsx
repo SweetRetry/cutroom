@@ -124,7 +124,7 @@ function VersionList({
                     onDone()
                   }}
                 >
-                  {isComparing ? "结束对比" : `与 ${session.viewing?.name ?? ""} 对比`}
+                  {isComparing ? "结束对比" : `对比 ${v.name}`}
                 </Button>
                 {!isCurrent && (
                   <Button variant="ghost" size="xs" onClick={() => onContinue(v)}>
@@ -179,7 +179,7 @@ function ContinueDialog({
       toast.success(`${version.name} 已设为当前版本`)
       onClose()
     } catch (error) {
-      toast.error("没能切换版本", {
+      toast.error("切换版本失败", {
         description: error instanceof Error ? error.message : undefined,
       })
     } finally {
@@ -191,7 +191,7 @@ function ContinueDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>把 {version.name} 设为当前版本</DialogTitle>
+          <DialogTitle>将 {version.name} 设为当前版本</DialogTitle>
           <DialogDescription>
             {tip
               ? `切换到分支 ${tip}。之后的评论写在 ${version.name} 上。`
