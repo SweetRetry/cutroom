@@ -1,5 +1,3 @@
-import { useState } from "react"
-
 import {
   ASSET_KIND_LABEL,
   ASSET_ORIGINS,
@@ -10,7 +8,8 @@ import {
 import { mediaUrl, thumbUrl } from "@/lib/api"
 import { useProjectData, useProjectPath } from "@/lib/project/hooks"
 import type { Session } from "@/lib/review/session"
-import { AssetViewer, VIEWABLE } from "./asset-viewer"
+import { useReviewUi } from "@/lib/review/ui-store"
+import { assetLabel, VIEWABLE } from "./asset-viewer"
 
 /**
  * Every asset, whoever brought it in, for reference while reviewing. Claude Code indexes them;
@@ -21,11 +20,7 @@ export function AssetList({ session }: { session: Session }) {
   const assets = data?.assets.assets ?? []
   const used = new Set(session.timeline?.tracks.flatMap((t) => t.clips.map((c) => c.asset)) ?? [])
   const origins = ASSET_ORIGINS.filter((o) => assets.some((a) => a.origin === o))
-  // The viewer steps through what can be shown, in the order the list shows it.
-  const viewable = origins.flatMap((o) =>
-    assets.filter((a) => a.origin === o && VIEWABLE.has(a.kind))
-  )
-  const [viewing, setViewing] = useState<number>()
+  const openAsset = useReviewUi((s) => s.openAsset)
 
   if (assets.length === 0) return <p className="px-4 text-muted-foreground">暂无素材</p>
 
@@ -46,13 +41,12 @@ export function AssetList({ session }: { session: Session }) {
                   key={a.id}
                   asset={a}
                   used={used.has(a.id)}
-                  onOpen={VIEWABLE.has(a.kind) ? () => setViewing(viewable.indexOf(a)) : undefined}
+                  onOpen={VIEWABLE.has(a.kind) ? () => openAsset(a.id) : undefined}
                 />
               ))}
           </ul>
         </section>
       ))}
-      <AssetViewer assets={viewable} index={viewing} onIndex={setViewing} />
     </div>
   )
 }
@@ -83,7 +77,7 @@ function AssetRow({ asset, used, onOpen }: { asset: Asset; used: boolean; onOpen
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="flex items-baseline gap-2">
-            <span className="truncate">{asset.name ?? asset.path.split("/").pop()}</span>
+            <span className="truncate">{assetLabel(asset)}</span>
             {asset.duration !== undefined && (
               <span className="ml-auto shrink-0 text-xs text-subtle-foreground tabular-nums">
                 {asset.duration.toFixed(1)}s

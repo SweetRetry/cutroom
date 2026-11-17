@@ -1,11 +1,6 @@
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
-import { toast } from "sonner"
 
-import type { RoundPhase } from "@workspace/core/review/state"
-
-import { api, unwrap } from "@/lib/api"
-import { useProjectPath, useRefresh } from "@/lib/project/hooks"
 import { useViewNavigation, type Session } from "@/lib/review/session"
 import { useReviewUi } from "@/lib/review/ui-store"
 import { ProjectMenu } from "./project-menu"
@@ -13,10 +8,10 @@ import { ProjectMenu } from "./project-menu"
 /** The window's top bar. Without a session it is the empty workspace's: only the folder menu. */
 export function Header({ session, className }: { session?: Session; className?: string }) {
   return (
-    // Narrow screens scroll the whole page; the header stays so the round's action stays in reach.
+    // Narrow screens scroll the whole page; the header stays so the version stays in reach.
     <header
       className={cn(
-        "sticky top-0 z-30 flex h-12 shrink-0 items-center gap-4 border-b bg-background/85 px-4 backdrop-blur lg:static lg:bg-background lg:backdrop-blur-none",
+        "sticky top-0 z-30 flex h-12 shrink-0 items-center gap-4 bg-background/85 px-4 backdrop-blur lg:static lg:bg-background lg:backdrop-blur-none",
         className
       )}
     >
@@ -33,72 +28,12 @@ function ReviewActions({ session }: { session: Session }) {
     <>
       <VersionName session={session} />
       <div className="ml-auto flex shrink-0 items-center gap-4">
-        {!editable && current ? (
+        {!editable && current && (
           <Button variant="secondary" onClick={() => void view(undefined)}>
             回到 {current.name}
           </Button>
-        ) : (
-          session.phase && <RoundAction session={session} phase={session.phase} />
         )}
       </div>
-    </>
-  )
-}
-
-/** What to say in Claude Code when it wasn't waiting; the cutroom skill knows it. */
-const PROMPT = "看评论"
-
-/**
- * Sending hands the round's comments to Claude Code, which usually sits in `cutroom review`
- * waiting for exactly this; the header says so, and when it isn't the toast says how to resume.
- * Comments written after a send go out with the next one.
- */
-function RoundAction({ session, phase }: { session: Session; phase: RoundPhase }) {
-  const p = useProjectPath()
-  const refresh = useRefresh()
-  const drafts = session.comments?.filter((c) => c.status === "draft").length ?? 0
-  const listening = !!session.files?.listening
-
-  // After a send the round stays open: new comments wait here until they're sent too.
-  if (phase.kind !== "drafting" && drafts === 0) {
-    return (
-      <span className="inline-flex items-center gap-2 text-muted-foreground">
-        <span className="size-1.5 rounded-full bg-subtle-foreground" />
-        已发送，等待新版本
-      </span>
-    )
-  }
-
-  const send = async () => {
-    let result
-    try {
-      result = await unwrap(api.round.send.post({ p }))
-    } catch (error) {
-      toast.error("发送失败", { description: error instanceof Error ? error.message : undefined })
-      return
-    }
-    await refresh()
-    if (result.listening) toast.success(`已发给 Claude Code，${result.count} 条评论`)
-    else
-      toast.success(`已发送 ${result.count} 条评论`, {
-        description: `Claude Code 未在等待。在对话中发送“${PROMPT}”即可读取。`,
-        action: { label: "复制", onClick: () => void navigator.clipboard.writeText(PROMPT) },
-        duration: 10000,
-      })
-  }
-
-  return (
-    <>
-      {listening && (
-        <span className="inline-flex items-center gap-2 text-muted-foreground">
-          <span className="size-1.5 rounded-full bg-primary" />
-          Claude Code 等待中
-        </span>
-      )}
-      <Button disabled={drafts === 0} onClick={() => void send()}>
-        发给 Claude Code
-        {drafts > 0 && <span className="tabular-nums">{drafts}</span>}
-      </Button>
     </>
   )
 }

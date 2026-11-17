@@ -42,16 +42,17 @@ export function useSession() {
       comments.comments
         .filter((c) => c.version === version)
         .map((c) => commentView(c, comments.rounds, agent))
-    const previous = current && agent.rounds.find((r) => r.result === current.name)?.version
+    // The round that produced the viewed version: its comments carry the replies it answered.
+    const previous = agent.rounds.find((r) => r.result === viewing.name)?.version
     return {
       phase: roundPhase(viewing.name, comments, agent),
       comments: views(viewing.name),
       findings: agent.findings.filter(
         (f) => f.version === viewing.name && !comments.dismissed.includes(f.id)
       ),
-      previous: editable && previous ? { version: previous, comments: views(previous) } : undefined,
+      previous: previous ? { version: previous, comments: views(previous) } : undefined,
     }
-  }, [files, viewing, current, editable])
+  }, [files, viewing])
 
   const diff = useMemo(
     () =>

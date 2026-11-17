@@ -24,6 +24,10 @@ type ReviewUi = {
   composeTick: number
   /** Which panel the left rail shows. */
   panel: SidePanel
+  /** The asset open full screen, by id. */
+  asset: string | null
+  /** An asset to put into the comment box as a chip; the counter makes a repeat count. */
+  quote: { id: string; label: string; n: number } | null
 
   attach(video: HTMLVideoElement | null): void
   seek(time: number): void
@@ -36,6 +40,8 @@ type ReviewUi = {
   fit(): void
   focus(id: string | null): void
   setPanel(panel: SidePanel): void
+  openAsset(id: string | null): void
+  quoteAsset(asset: { id: string; label: string }): void
 }
 
 export type SidePanel = "assets" | "versions"
@@ -54,6 +60,8 @@ export const useReviewUi = create<ReviewUi>((set, get) => ({
   focused: null,
   composeTick: 0,
   panel: "assets",
+  asset: null,
+  quote: null,
 
   attach: (video) => set({ video, playing: false, time: video?.currentTime ?? 0 }),
   seek: (time) => {
@@ -88,4 +96,6 @@ export const useReviewUi = create<ReviewUi>((set, get) => ({
   fit: () => set({ fitted: true }),
   focus: (focused) => set({ focused }),
   setPanel: (panel) => set({ panel }),
+  openAsset: (asset) => set({ asset }),
+  quoteAsset: (asset) => set((s) => ({ quote: { ...asset, n: (s.quote?.n ?? 0) + 1 } })),
 }))

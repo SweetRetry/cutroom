@@ -27,7 +27,7 @@ Retry is Zimin's design language for the site, notes, slides and small tools: qu
 - **Precise**: exact alignment, numbers and wording. No filler, no fake stats.
 - **Warm**: not corporate. First person, room to breathe.
 
-Made for peers and collaborators who judge the thinking, not the packaging. References: Linear's clarity, Apple's quiet finish, and quiet craft: small details with a job, unnoticed at first glance and rewarding on the second. Never: terminal or hacker styling, neo-brutalism, the SaaS template (blue-purple gradient, centered hero, three icon cards), Dribbble showpieces, an untouched shadcn default.
+Made for peers and collaborators who judge the thinking, not the packaging. References: Linear's clarity, Apple's quiet finish, and quiet craft: small details with a job, unnoticed at first glance and rewarding on the second. Never: terminal or hacker styling, neo-brutalism, the SaaS template (blue-purple gradient, centered hero, three feature cards), Dribbble showpieces, an untouched shadcn default.
 
 When rules compete: facts and constraints › the host project's framework › task clarity › Retry's look › polish.
 
@@ -87,13 +87,22 @@ Theme utilities only: no arbitrary values (`bg-[#…]`, `text-[13px]`). A new va
 
 - **Card**: no border; `bg-card` alone.
 - **Input, Textarea, Select**: filled `bg-muted` with the `border-input` edge; focus `border-ring` plus a soft ring.
-- **Button**: `default` once per view, then `secondary`, `ghost`, `destructive` (`bg-destructive-soft text-destructive`), `link`. No `outline`.
+- **Input group**: a field with things inside it (a submit, a chip line, a unit). The field delta applies to the group and the control inside is bare; a `ghost` button inside hovers to `surface-3`, one rung above the field.
+- **Button**: `default` once per view, then `secondary`, `ghost`, `destructive` (`bg-destructive-soft text-destructive`), `link`. No `outline`. Icon-only buttons use the square `icon` sizes, matched to the control height around them.
 - **Badge**: not for metadata. Status is a 6px dot plus a word.
 - **Tabs**: active is `bg-surface-2`; no underline, no emerald.
 - **Popover, Dropdown, Toast**: `bg-popover`, `border`, `rounded-md`. **Dialog, Sheet**: `bg-background`, `border`, Dialog `rounded-lg`. **Tooltip**: `bg-foreground text-background`, `rounded-md`.
 - **Table**: `border-t` rows, no outer border or zebra; numbers and their headers `text-right tabular-nums`.
 - **Sidebar**: separated by tone, no line; active `bg-sidebar-accent`.
 - **Switch, Checkbox, Radio**: off `bg-surface-2` / `bg-surface-3`, on `bg-primary`. **Skeleton**: `bg-surface-2`.
+
+## Iconography
+
+Icons are part of the language, like type: they carry actions and meaning, never decoration. Lucide (`lucide-react`) at its default stroke, sized by the control it sits in (the `icon` button sizes, `data-icon` beside a label).
+
+- **An action's face follows how well its icon is known and how often it is met.** A universal action (send, close, play and pause, add, remove from a list, copy, search, more, previous and next, expand) is an icon-only button wherever it sits in a field, a row, a toolbar or a repeated item. Its `aria-label` names it, and a tooltip names it and gives the shortcut. An action whose icon a newcomer could misread gets a word, with the icon in front when it helps recognition. Removing the one item in front of you stays an icon; an action that can't be undone on something bigger than that item (an account, a project, a whole batch) is a word. The one decision a view exists for is a word on the single `default` button.
+- **An action sits on its object.** A field that sends on its own (a message, a comment, a search) holds its submit inside, bottom right, as an input group; a form's submit follows the form. A row's actions are at the row's end. A media control is on the media. Actions lined up in a separate row of text buttons, away from what they act on, are placed by default rather than by design.
+- **Meaning, not ornament.** An icon may stand for a kind (file type, media kind) or a state (playing, recording) where a word won't fit. Status stays a dot plus a word.
 
 ## Interaction patterns
 
@@ -120,12 +129,13 @@ A surface that needs other parameters gets `design/<surface>.md`: what it inheri
 
 ## Do's and Don'ts
 
-- Centered hero with three icon cards → a real claim or the work, left-aligned.
+- Centered hero with three feature cards → a real claim or the work, left-aligned.
 - Boxes around groups, cards in cards → space, tone, type size.
 - Gradients, glows, glass cards, grid backdrops, shadows → flat tone steps.
 - Untouched shadcn components → the deltas above.
 - Badges on metadata → `text-xs text-muted-foreground`.
-- Decorative icons on headings → icons only on actions.
+- Icons on headings, icons for symmetry → icons only where they act or carry meaning.
+- Universal actions spelled out, a row of text buttons under a field → icon buttons where the object is.
 - Mono headlines, heavy borders, all caps → mono stays in code.
 - Squeezed tables, mixed alignment → full width, numbers right.
 - Green for good numbers → `text-muted-foreground`.

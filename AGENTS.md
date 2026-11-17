@@ -40,6 +40,7 @@ One option per concern. Don't add alternatives.
 - Page: Vite + React + TanStack Router (search params carry the project path and the version). Typed client: Eden treaty (`apps/web/src/lib/api.ts`).
 - Project data: TanStack Query, refetched on the service's change feed (SSE). Client state: zustand. Toasts: sonner.
 - Motion: motion (`motion/react`) or Tailwind CSS transitions. Icons: lucide-react.
+- Text that holds chips (the comment box): tiptap, wrapped once as `packages/ui` `mention-editor`. Plain fields stay `Textarea`.
 
 ## Verification
 

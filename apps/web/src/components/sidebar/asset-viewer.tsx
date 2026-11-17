@@ -7,31 +7,39 @@ import {
   LightboxTitle,
 } from "@workspace/ui/components/lightbox"
 import { cn } from "@workspace/ui/lib/utils"
-import { ChevronLeft, ChevronRight, X } from "lucide-react"
+import { AtSign, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { motion } from "motion/react"
 import { useState } from "react"
 
-import type { Asset } from "@workspace/core/schema"
+import { ASSET_ORIGINS, type Asset } from "@workspace/core/schema"
 
 import { mediaUrl, thumbUrl } from "@/lib/api"
-import { useProjectPath } from "@/lib/project/hooks"
+import { useProjectData, useProjectPath } from "@/lib/project/hooks"
+import { useReviewUi } from "@/lib/review/ui-store"
 
 /** Kinds the browser can show. A font or an unknown file has nothing to open. */
 export const VIEWABLE = new Set<Asset["kind"]>(["video", "image", "sticker", "audio"])
 
+/** The assets the viewer can step through, in the order the sidebar lists them. */
+function useViewableAssets(): Asset[] {
+  const assets = useProjectData().data?.assets.assets ?? []
+  return ASSET_ORIGINS.flatMap((o) => assets.filter((a) => a.origin === o && VIEWABLE.has(a.kind)))
+}
+
+export const assetLabel = (asset: Asset) => asset.name ?? asset.path.split("/").pop() ?? asset.id
+
 /**
  * Looking at an asset the way an editor does: the whole window, the picture as large as it
- * fits, nothing around it. The arrow keys step through the list in the order the sidebar shows.
+ * fits, nothing around it. One per workspace: the asset list and a chip in a comment both open
+ * it. The arrow keys step through the list in the order the sidebar shows.
  */
-export function AssetViewer({
-  assets,
-  index,
-  onIndex,
-}: {
-  assets: Asset[]
-  index: number | undefined
-  onIndex: (index: number | undefined) => void
-}) {
+export function AssetViewer({ canQuote }: { canQuote: boolean }) {
+  const assets = useViewableAssets()
+  const id = useReviewUi((s) => s.asset)
+  const { openAsset, quoteAsset } = useReviewUi.getState()
+  const found = assets.findIndex((a) => a.id === id)
+  const index = found < 0 ? undefined : found
+  const onIndex = (i: number | undefined) => openAsset(i === undefined ? null : assets[i]!.id)
   const asset = index === undefined ? undefined : assets[index]
   // The last asset stays rendered while the viewer fades out.
   const [shown, setShown] = useState(asset)
@@ -53,7 +61,7 @@ export function AssetViewer({
         {shown && (
           <>
             <header className="flex h-12 shrink-0 items-center gap-3 pr-2 pl-4">
-              <LightboxTitle>{shown.name ?? shown.path.split("/").pop()}</LightboxTitle>
+              <LightboxTitle>{assetLabel(shown)}</LightboxTitle>
               {/* What the picture can't show by itself: how long and how many pixels. */}
               {shown.duration !== undefined && (
                 <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
@@ -80,13 +88,27 @@ export function AssetViewer({
                   {index + 1} / {assets.length}
                 </span>
               )}
+              {canQuote && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className={cn(assets.length < 2 && "ml-auto")}
+                  onClick={() => {
+                    quoteAsset({ id: shown.id, label: assetLabel(shown) })
+                    onIndex(undefined)
+                  }}
+                >
+                  <AtSign data-icon="inline-start" />
+                  引用到评论
+                </Button>
+              )}
               <LightboxClose
                 render={
                   <Button
                     variant="ghost"
                     size="icon-sm"
                     aria-label="关闭（Esc）"
-                    className={cn(assets.length < 2 && "ml-auto")}
+                    className={cn(assets.length < 2 && !canQuote && "ml-auto")}
                   />
                 }
               >

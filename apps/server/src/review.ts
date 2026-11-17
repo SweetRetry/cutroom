@@ -1,5 +1,6 @@
 import { PATHS } from "@workspace/core/project/layout"
 import { buildContext } from "@workspace/core/review/context"
+import { mentionedIds } from "@workspace/core/review/mentions"
 import { isSent, nextCommentId, roundPhase } from "@workspace/core/review/state"
 import type { Anchor, ReviewComment, Round } from "@workspace/core/schema"
 import { anchorSpan } from "@workspace/core/timeline/query"
@@ -46,6 +47,9 @@ export async function addComment(project: Project, input: NewComment): Promise<R
   const { version, timeline, working } = await writable(project)
   const text = input.text.trim()
   if (!text) throw new ProjectError("评论不能为空")
+  const known = new Set(working.assets.assets.map((a) => a.id))
+  const unknown = mentionedIds(text).filter((id) => !known.has(id))
+  if (unknown.length) throw new ProjectError(`提到的素材不在 assets.json 里：${unknown.join("、")}`)
 
   const context = buildContext({
     anchor: input.anchor,

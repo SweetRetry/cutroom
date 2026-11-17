@@ -4,6 +4,8 @@ import type { Timeline } from "@workspace/core/schema"
 import type { Session } from "@/lib/review/session"
 import { useReviewUi } from "@/lib/review/ui-store"
 import { anchorSpan } from "@workspace/core/timeline/query"
+import { plainText } from "@workspace/core/review/mentions"
+
 import { STATUS_TONE } from "../review/status"
 import { activate } from "./clips"
 
@@ -28,7 +30,7 @@ export function Annotations({
       id: view.comment.id,
       anchor: view.comment.anchor,
       tone: STATUS_TONE[view.status],
-      title: `${view.comment.id} ${view.comment.text}`,
+      title: `${view.comment.id} ${plainText(view.comment.text)}`,
       finding: false,
     })),
     ...(session.findings ?? []).map((f) => ({
